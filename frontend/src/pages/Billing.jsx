@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+const API = "https://vyprox-billing-system-1.onrender.com";
 
 export default function Billing() {
 
   const navigate = useNavigate();
+
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
 
@@ -14,16 +16,13 @@ export default function Billing() {
 
   const [discount, setDiscount] = useState(0);
 
-  // CUSTOMER DETAILS
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [paymentMode, setPaymentMode] = useState("Cash");
 
   // ================= FETCH PRODUCTS =================
   useEffect(() => {
-
     fetchProducts();
-
   }, []);
 
   const fetchProducts = async () => {
@@ -33,19 +32,22 @@ export default function Billing() {
       const token = localStorage.getItem("token");
 
       const res = await axios.get(
-        "http://localhost:5000/api/products",
+        `${API}/api/products`,
         {
           headers: {
-            Authorization: `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
       setProducts(res.data.products || []);
 
-    } catch (error) {
+    } catch (err) {
 
-      console.log(error);
+      console.log(
+        "Products Error:",
+        err.response?.data || err.message
+      );
 
     }
   };
@@ -54,8 +56,7 @@ export default function Billing() {
   const addToCart = () => {
 
     if (!selectedProduct) {
-      alert("Select product");
-      return;
+      return alert("Select Product");
     }
 
     const product = products.find(
@@ -63,53 +64,44 @@ export default function Billing() {
     );
 
     if (!product) {
-      alert("Product not found");
-      return;
+      return alert("Product not found");
     }
 
-    if (quantity > product.stock) {
-      alert("Not enough stock");
-      return;
-    }
-
-    const existingItem = cart.find(
-      (item) => item._id === product._id
+    const existing = cart.find(
+      (i) => i._id === product._id
     );
 
-    if (existingItem) {
+    if (existing) {
 
-      const updatedCart = cart.map((item) => {
+      const updated = cart.map((item) => {
 
         if (item._id === product._id) {
 
-          const newQty = item.quantity + quantity;
-
-          if (newQty > product.stock) {
-            alert("Stock limit exceeded");
-            return item;
-          }
+          const newQty =
+            item.quantity + quantity;
 
           return {
             ...item,
             quantity: newQty,
-            total: newQty * item.price
+            total: newQty * item.price,
           };
         }
 
         return item;
       });
 
-      setCart(updatedCart);
+      setCart(updated);
 
     } else {
 
-      const newItem = {
-        ...product,
-        quantity,
-        total: product.price * quantity
-      };
-
-      setCart([...cart, newItem]);
+      setCart([
+        ...cart,
+        {
+          ...product,
+          quantity,
+          total: product.price * quantity,
+        },
+      ]);
     }
 
     setSelectedProduct("");
@@ -119,41 +111,39 @@ export default function Billing() {
   // ================= REMOVE ITEM =================
   const removeItem = (id) => {
 
-    const updated = cart.filter(
-      (item) => item._id !== id
+    setCart(
+      cart.filter((item) => item._id !== id)
     );
-
-    setCart(updated);
   };
 
   // ================= CALCULATIONS =================
   const subtotal = cart.reduce(
-    (acc, item) => acc + item.total,
+    (a, i) => a + i.total,
     0
   );
 
   const discountAmount =
     (subtotal * discount) / 100;
 
-  const taxableAmount =
+  const taxable =
     subtotal - discountAmount;
 
-  const cgst = taxableAmount * 0.09;
-
-  const sgst = taxableAmount * 0.09;
+  const cgst = taxable * 0.09;
+  const sgst = taxable * 0.09;
 
   const grandTotal =
-    taxableAmount + cgst + sgst;
+    taxable + cgst + sgst;
 
   // ================= SAVE BILL =================
   const saveBill = async () => {
 
     if (cart.length === 0) {
-      alert("Cart is empty");
-      return;
+      return alert("Cart Empty");
     }
 
     try {
+
+      const token = localStorage.getItem("token");
 
       const payload = {
         items: cart,
@@ -164,371 +154,304 @@ export default function Billing() {
         grandTotal,
         customerName,
         customerPhone,
-        paymentMode
+        paymentMode,
       };
 
-      console.log("PAYLOAD:", payload);
-
-      const token = localStorage.getItem("token");
-
-      const res = await axios.post(
-        "http://localhost:5000/api/bills/create",
+      await axios.post(
+        `${API}/api/bills/create`,
         payload,
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
+            "Content-Type": "application/json",
+          },
         }
       );
 
-      console.log("SUCCESS:", res.data);
-
       alert("Bill Saved Successfully ✅");
 
-      console.log("SUCCESS:", res.data);
+      navigate("/app/invoice", {
+        state: payload,
+      });
 
-alert("Bill Saved Successfully ✅");
-
-navigate("/invoice", {
-  state: payload
-});
-
-// CLEAR CART
-setCart([]);
-setDiscount(0);
-setCustomerName("");
-setCustomerPhone("");
-setPaymentMode("Cash");
-
-      // CLEAR CART
+      // RESET
       setCart([]);
       setDiscount(0);
       setCustomerName("");
       setCustomerPhone("");
       setPaymentMode("Cash");
 
-    } catch (error) {
+    } catch (err) {
 
-      console.log(error);
+      console.log(
+        "Save Bill Error:",
+        err.response?.data || err.message
+      );
 
-      alert("Failed to save bill");
+      alert(
+        err.response?.data?.message ||
+        "Failed to save bill"
+      );
     }
   };
 
   return (
 
-    
+    <div>
 
-      <div className="min-h-screen">
+      {/* TITLE */}
+      <div className="mb-8">
 
-        {/* HEADER */}
-        <div className="flex justify-between items-center mb-6">
+        <h1 className="text-4xl font-bold text-gray-800 dark:text-white">
+          Billing
+        </h1>
+
+        <p className="text-gray-500 dark:text-gray-300 mt-2">
+          Create and manage customer bills
+        </p>
+
+      </div>
+
+      {/* CUSTOMER DETAILS */}
+      <div className="grid md:grid-cols-3 gap-5 mb-6">
+
+        <input
+          type="text"
+          placeholder="Customer Name"
+          value={customerName}
+          onChange={(e) =>
+            setCustomerName(e.target.value)
+          }
+          className="p-4 rounded-2xl border bg-white dark:bg-slate-900 dark:text-white"
+        />
+
+        <input
+          type="text"
+          placeholder="Phone Number"
+          value={customerPhone}
+          onChange={(e) =>
+            setCustomerPhone(e.target.value)
+          }
+          className="p-4 rounded-2xl border bg-white dark:bg-slate-900 dark:text-white"
+        />
+
+        <select
+          value={paymentMode}
+          onChange={(e) =>
+            setPaymentMode(e.target.value)
+          }
+          className="p-4 rounded-2xl border bg-white dark:bg-slate-900 dark:text-white"
+        >
+          <option>Cash</option>
+          <option>UPI</option>
+          <option>Card</option>
+        </select>
+
+      </div>
+
+      {/* PRODUCT SECTION */}
+      <div className="grid md:grid-cols-3 gap-5 mb-6">
+
+        <select
+          value={selectedProduct}
+          onChange={(e) =>
+            setSelectedProduct(e.target.value)
+          }
+          className="p-4 rounded-2xl border bg-white dark:bg-slate-900 dark:text-white"
+        >
+
+          <option value="">
+            Select Product
+          </option>
+
+          {products.map((p) => (
+
+            <option
+              key={p._id}
+              value={p._id}
+            >
+              {p.name} - ₹{p.price}
+            </option>
+
+          ))}
+
+        </select>
+
+        <input
+          type="number"
+          value={quantity}
+          min="1"
+          onChange={(e) =>
+            setQuantity(Number(e.target.value))
+          }
+          className="p-4 rounded-2xl border bg-white dark:bg-slate-900 dark:text-white"
+        />
+
+        <button
+          onClick={addToCart}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold"
+        >
+          Add To Cart
+        </button>
+
+      </div>
+
+      {/* CART */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-6">
+
+        <h2 className="text-2xl font-bold mb-4 dark:text-white">
+          Cart Items
+        </h2>
+
+        {cart.length === 0 ? (
+
+          <p className="text-gray-500">
+            No items added
+          </p>
+
+        ) : (
+
+          cart.map((item) => (
+
+            <div
+              key={item._id}
+              className="flex justify-between items-center border-b py-4 dark:border-slate-700"
+            >
+
+              <div>
+
+                <h3 className="font-semibold dark:text-white">
+                  {item.name}
+                </h3>
+
+                <p className="text-sm text-gray-500">
+                  Qty: {item.quantity}
+                </p>
+
+              </div>
+
+              <div className="flex items-center gap-4">
+
+                <p className="font-bold dark:text-white">
+                  ₹{item.total}
+                </p>
+
+                <button
+                  onClick={() =>
+                    removeItem(item._id)
+                  }
+                  className="text-red-500"
+                >
+                  ❌
+                </button>
+
+              </div>
+
+            </div>
+
+          ))
+        )}
+
+      </div>
+
+      {/* SUMMARY */}
+      <div className="mt-6 grid lg:grid-cols-2 gap-6">
+
+        {/* DISCOUNT */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-6">
+
+          <h2 className="text-2xl font-bold mb-5 dark:text-white">
+            Discount & Tax
+          </h2>
+
+          <div className="space-y-5">
+
+            {/* DISCOUNT */}
+            <div>
+
+              <label className="block mb-2 font-semibold dark:text-white">
+                Discount (%)
+              </label>
+
+              <input
+                type="number"
+                value={discount}
+                onChange={(e) =>
+                  setDiscount(Number(e.target.value))
+                }
+                className="w-full p-4 rounded-2xl border bg-gray-50 dark:bg-slate-800 dark:text-white"
+                placeholder="Enter discount"
+              />
+
+            </div>
+
+            {/* TAX INFO */}
+            <div className="bg-indigo-50 dark:bg-slate-800 rounded-2xl p-5 space-y-3">
+
+              <div className="flex justify-between dark:text-white">
+                <span>Subtotal</span>
+                <span>₹{subtotal.toFixed(2)}</span>
+              </div>
+
+              <div className="flex justify-between text-red-500">
+                <span>Discount</span>
+                <span>- ₹{discountAmount.toFixed(2)}</span>
+              </div>
+
+              <div className="flex justify-between dark:text-white">
+                <span>CGST (9%)</span>
+                <span>₹{cgst.toFixed(2)}</span>
+              </div>
+
+              <div className="flex justify-between dark:text-white">
+                <span>SGST (9%)</span>
+                <span>₹{sgst.toFixed(2)}</span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* TOTAL */}
+        <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 text-white rounded-3xl shadow-2xl p-8 flex flex-col justify-between">
 
           <div>
 
-            <h1 className="text-4xl font-bold text-gray-800">
-              Billing System
-            </h1>
+            <h2 className="text-3xl font-bold">
+              Billing Summary
+            </h2>
 
-            <p className="text-gray-500 mt-1">
-              Create professional invoices instantly
+            <p className="mt-2 text-white/80">
+              Final payable amount
             </p>
 
           </div>
 
-        </div>
+          <div className="mt-10">
 
-        {/* CUSTOMER DETAILS */}
-        <div className="bg-white/90 backdrop-blur-lg p-6 rounded-2xl shadow-2xl mb-6 border border-gray-100">
+            <h1 className="text-5xl font-extrabold">
+              ₹{grandTotal.toFixed(2)}
+            </h1>
 
-          <h2 className="text-2xl font-bold mb-5 text-gray-800">
-            Customer Details
-          </h2>
+            <p className="mt-3 text-white/70">
+              Including GST
+            </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-            <input
-              type="text"
-              placeholder="Customer Name"
-              value={customerName}
-              onChange={(e) =>
-                setCustomerName(e.target.value)
-              }
-              className="border border-gray-300 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-
-            <input
-              type="text"
-              placeholder="Phone Number"
-              value={customerPhone}
-              onChange={(e) =>
-                setCustomerPhone(e.target.value)
-              }
-              className="border border-gray-300 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-
-            <select
-              value={paymentMode}
-              onChange={(e) =>
-                setPaymentMode(e.target.value)
-              }
-              className="border border-gray-300 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-
-              <option value="Cash">
-                Cash
-              </option>
-
-              <option value="UPI">
-                UPI
-              </option>
-
-              <option value="Card">
-                Card
-              </option>
-
-            </select>
-
-          </div>
-
-        </div>
-
-        {/* ADD PRODUCT */}
-        <div className="bg-white/90 backdrop-blur-lg p-6 rounded-2xl shadow-2xl mb-6 border border-gray-100">
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-            {/* PRODUCT SELECT */}
-            <select
-              value={selectedProduct}
-              onChange={(e) =>
-                setSelectedProduct(e.target.value)
-              }
-              className="border border-gray-300 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-
-              <option value="">
-                Select Product
-              </option>
-
-              {products.map((product) => (
-
-                <option
-                  key={product._id}
-                  value={product._id}
-                >
-                  {product.name} -
-                  ₹{product.price}
-                  (Stock: {product.stock})
-                </option>
-
-              ))}
-
-            </select>
-
-            {/* QUANTITY */}
-            <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) =>
-                setQuantity(Number(e.target.value))
-              }
-              className="border border-gray-300 p-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-
-            {/* BUTTON */}
             <button
-              onClick={addToCart}
-              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:scale-105 transition-all duration-300 text-white rounded-xl p-3 font-semibold shadow-lg"
+              onClick={saveBill}
+              className="w-full mt-8 bg-white text-indigo-700 font-bold py-4 rounded-2xl hover:scale-[1.02] transition-all duration-300"
             >
-              Add To Bill
+              Save Bill
             </button>
 
           </div>
 
         </div>
 
-        {/* CART TABLE */}
-        <div className="bg-white/90 backdrop-blur-lg rounded-2xl shadow-2xl overflow-x-auto border border-gray-100">
-
-          <table className="w-full">
-
-            <thead className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
-
-              <tr>
-                <th className="p-4 text-left">
-                  Product
-                </th>
-
-                <th className="p-4 text-left">
-                  Price
-                </th>
-
-                <th className="p-4 text-left">
-                  Qty
-                </th>
-
-                <th className="p-4 text-left">
-                  Total
-                </th>
-
-                <th className="p-4 text-left">
-                  Action
-                </th>
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {cart.length === 0 ? (
-
-                <tr>
-                  <td
-                    colSpan="5"
-                    className="text-center p-10 text-gray-500"
-                  >
-                    No Products Added
-                  </td>
-                </tr>
-
-              ) : (
-
-                cart.map((item) => (
-
-                  <tr
-                    key={item._id}
-                    className="border-b hover:bg-gray-50 transition-all"
-                  >
-
-                    <td className="p-4 font-semibold">
-                      {item.name}
-                    </td>
-
-                    <td className="p-4">
-                      ₹{item.price}
-                    </td>
-
-                    <td className="p-4">
-                      {item.quantity}
-                    </td>
-
-                    <td className="p-4 font-bold text-indigo-600">
-                      ₹{item.total}
-                    </td>
-
-                    <td className="p-4">
-
-                      <button
-                        onClick={() =>
-                          removeItem(item._id)
-                        }
-                        className="bg-red-500 hover:bg-red-600 transition-all text-white px-4 py-2 rounded-xl shadow"
-                      >
-                        Remove
-                      </button>
-
-                    </td>
-
-                  </tr>
-
-                ))
-              )}
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-        {/* SUMMARY */}
-        <div className="bg-gradient-to-br from-white to-indigo-50 p-6 rounded-2xl shadow-2xl mt-6 max-w-md ml-auto border border-indigo-100">
-
-          <h2 className="text-2xl font-bold mb-5 text-gray-800">
-            Bill Summary
-          </h2>
-
-          {/* DISCOUNT */}
-          <div className="mb-5">
-
-            <label className="font-semibold text-gray-700">
-              Discount %
-            </label>
-
-            <input
-              type="number"
-              value={discount}
-              onChange={(e) =>
-                setDiscount(Number(e.target.value))
-              }
-              className="border border-gray-300 p-3 rounded-xl w-full mt-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-
-          </div>
-
-          {/* TOTALS */}
-          <div className="space-y-3 text-gray-700">
-
-            <p className="flex justify-between">
-              <span>Subtotal</span>
-
-              <span className="font-semibold">
-                ₹{subtotal.toFixed(2)}
-              </span>
-            </p>
-
-            <p className="flex justify-between">
-              <span>Discount</span>
-
-              <span className="font-semibold text-red-500">
-                ₹{discountAmount.toFixed(2)}
-              </span>
-            </p>
-
-            <p className="flex justify-between">
-              <span>CGST</span>
-
-              <span className="font-semibold">
-                ₹{cgst.toFixed(2)}
-              </span>
-            </p>
-
-            <p className="flex justify-between">
-              <span>SGST</span>
-
-              <span className="font-semibold">
-                ₹{sgst.toFixed(2)}
-              </span>
-            </p>
-
-            <hr className="my-4" />
-
-            <h3 className="text-2xl font-bold flex justify-between text-indigo-700">
-
-              <span>Grand Total</span>
-
-              <span>
-                ₹{grandTotal.toFixed(2)}
-              </span>
-
-            </h3>
-
-          </div>
-
-          {/* SAVE BUTTON */}
-          <button
-            onClick={saveBill}
-            className="bg-gradient-to-r from-green-500 to-emerald-600 hover:scale-105 transition-all duration-300 text-white w-full mt-6 p-4 rounded-2xl font-bold shadow-xl"
-          >
-            Save Bill
-          </button>
-
-        </div>
-
       </div>
 
-    
+    </div>
   );
 }

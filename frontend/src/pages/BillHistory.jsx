@@ -1,228 +1,272 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+const API = "https://vyprox-billing-system-1.onrender.com";
+
 function BillHistory() {
+
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-
-  const [selectedBill, setSelectedBill] = useState(null);
-
-  const limit = 5;
-
-  // ================= FETCH FROM BACKEND =================
-  const fetchBills = async () => {
-    try {
-      setLoading(true);
-
-      const res = await axios.get("http://localhost:5000/api/bills", {
-        params: {
-          page,
-          limit,
-          search,
-        },
-      });
-
-      // backend supported response
-      setBills(res.data.bills || []);
-      setTotalPages(res.data.totalPages || 1);
-
-      setError("");
-    } catch (err) {
-      console.log(err);
-      setError("Failed to load bills");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // ================= FETCH BILLS =================
   useEffect(() => {
+
     fetchBills();
-  }, [page]);
 
-  // debounce search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(1);
-      fetchBills();
-    }, 400);
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [search]);
+  const fetchBills = async () => {
 
-  // ================= DELETE BILL =================
-  const deleteBill = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/bills/${id}`);
 
-      // instant UI update
-      setBills((prev) => prev.filter((b) => b._id !== id));
+      const token = localStorage.getItem("token");
+
+      const res = await axios.get(
+        `${API}/api/bills`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setBills(
+        res.data.bills || []
+      );
+
     } catch (err) {
-      console.log(err);
-      alert("Delete failed");
+
+      console.log(
+        "Bill History Error:",
+        err.response?.data || err.message
+      );
+
+    } finally {
+
+      setLoading(false);
+
     }
   };
-
-  // ================= CLIENT FILTER (fallback safety) =================
-  const filteredBills = bills.filter((b) => {
-    const q = search.toLowerCase();
-    return (
-      b._id?.toLowerCase().includes(q) ||
-      b.customerName?.toLowerCase().includes(q) ||
-      b.customerPhone?.includes(q)
-    );
-  });
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
 
-      {/* HEADER */}
-      <h1 className="text-3xl font-bold mb-4">
-        📄 Invoice History
-      </h1>
+    <div>
 
-      {/* SEARCH */}
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search by name / phone / invoice id"
-        className="w-full p-3 border rounded mb-4"
-      />
+      {/* TITLE */}
+      <div className="mb-8">
 
-      {/* ERROR */}
-      {error && (
-        <div className="bg-red-100 text-red-600 p-3 mb-3 rounded">
-          {error}
+        <h1 className="text-4xl font-bold text-gray-800 dark:text-white">
+          Invoice History
+        </h1>
+
+        <p className="text-gray-500 dark:text-gray-300 mt-2">
+          View all generated invoices and billing records
+        </p>
+
+      </div>
+
+      {/* LOADING */}
+      {loading ? (
+
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 shadow-xl text-center">
+
+          <h2 className="text-2xl font-bold dark:text-white">
+            Loading Bills...
+          </h2>
+
         </div>
-      )}
 
-      {/* TABLE */}
-      <div className="bg-white rounded-xl shadow overflow-x-auto">
+      ) : bills.length === 0 ? (
 
-        <table className="w-full">
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="p-3 text-left">Date</th>
-              <th className="p-3 text-left">Customer</th>
-              <th className="p-3 text-left">Phone</th>
-              <th className="p-3 text-left">Total</th>
-              <th className="p-3 text-left">Action</th>
-            </tr>
-          </thead>
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 shadow-xl text-center">
 
-          <tbody>
+          <h2 className="text-2xl font-bold dark:text-white">
+            No Bills Found
+          </h2>
 
-            {loading ? (
-              <tr>
-                <td colSpan="5" className="p-6 text-center">
-                  Loading...
-                </td>
-              </tr>
-            ) : filteredBills.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="p-6 text-center">
-                  No bills found
-                </td>
-              </tr>
-            ) : (
-              filteredBills.map((bill) => (
-                <tr key={bill._id} className="border-t">
+          <p className="text-gray-500 mt-2">
+            Your invoice history will appear here
+          </p>
 
-                  <td className="p-3">
-                    {new Date(bill.createdAt).toLocaleString()}
-                  </td>
+        </div>
 
-                  <td className="p-3">
-                    {bill.customerName || "N/A"}
-                  </td>
+      ) : (
 
-                  <td className="p-3">
+        <div className="grid gap-6">
+
+          {bills.map((bill, index) => (
+
+            <div
+              key={bill._id}
+              className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-slate-800"
+            >
+
+              {/* TOP */}
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+
+                <div>
+
+                  <h2 className="text-2xl font-bold text-indigo-600">
+                    Invoice #{index + 1}
+                  </h2>
+
+                  <p className="text-gray-500 dark:text-gray-300 mt-1">
+                    Customer:
+                    {" "}
+                    {bill.customerName || "Walk-in Customer"}
+                  </p>
+
+                  <p className="text-gray-500 dark:text-gray-300">
+                    Phone:
+                    {" "}
                     {bill.customerPhone || "N/A"}
-                  </td>
+                  </p>
 
-                  <td className="p-3 font-bold">
-                    ₹{bill.grandTotal}
-                  </td>
+                </div>
 
-                  <td className="p-3 flex gap-2">
+                <div className="text-right">
 
-                    <button
-                      onClick={() => setSelectedBill(bill)}
-                      className="bg-blue-500 text-white px-3 py-1 rounded"
-                    >
-                      View
-                    </button>
+                  <h1 className="text-3xl font-extrabold text-green-600">
+                    ₹{bill.grandTotal?.toFixed(2)}
+                  </h1>
 
-                    <button
-                      onClick={() => deleteBill(bill._id)}
-                      className="bg-red-500 text-white px-3 py-1 rounded"
-                    >
-                      Delete
-                    </button>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {new Date(
+                      bill.createdAt
+                    ).toLocaleString()}
+                  </p>
 
-                  </td>
+                </div>
 
-                </tr>
-              ))
-            )}
+              </div>
 
-          </tbody>
-        </table>
-      </div>
+              {/* ITEMS */}
+              <div className="mt-6 overflow-x-auto">
 
-      {/* PAGINATION */}
-      <div className="flex justify-center gap-2 mt-4">
-        {Array.from({ length: totalPages }, (_, i) => (
-          <button
-            key={i}
-            onClick={() => setPage(i + 1)}
-            className={`px-3 py-1 border rounded ${
-              page === i + 1 ? "bg-black text-white" : "bg-white"
-            }`}
-          >
-            {i + 1}
-          </button>
-        ))}
-      </div>
+                <table className="w-full">
 
-      {/* MODAL */}
-      {selectedBill && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                  <thead>
 
-          <div className="bg-white w-[500px] p-6 rounded-xl">
+                    <tr className="border-b dark:border-slate-700">
 
-            <h2 className="text-xl font-bold mb-3">
-              Bill Details
-            </h2>
+                      <th className="text-left py-3 dark:text-white">
+                        Product
+                      </th>
 
-            <p><b>Name:</b> {selectedBill.customerName}</p>
-            <p><b>Phone:</b> {selectedBill.customerPhone}</p>
-            <p><b>Total:</b> ₹{selectedBill.grandTotal}</p>
+                      <th className="text-center py-3 dark:text-white">
+                        Qty
+                      </th>
 
-            <hr className="my-3" />
+                      <th className="text-center py-3 dark:text-white">
+                        Price
+                      </th>
 
-            <div className="max-h-60 overflow-auto">
-              {selectedBill.items.map((item, i) => (
-                <p key={i}>
-                  • {item.name} × {item.quantity} = ₹{item.total}
-                </p>
-              ))}
+                      <th className="text-right py-3 dark:text-white">
+                        Total
+                      </th>
+
+                    </tr>
+
+                  </thead>
+
+                  <tbody>
+
+                    {bill.items?.map((item, i) => (
+
+                      <tr
+                        key={i}
+                        className="border-b dark:border-slate-800"
+                      >
+
+                        <td className="py-4 dark:text-white">
+                          {item.name}
+                        </td>
+
+                        <td className="text-center dark:text-white">
+                          {item.quantity}
+                        </td>
+
+                        <td className="text-center dark:text-white">
+                          ₹{item.price}
+                        </td>
+
+                        <td className="text-right font-semibold dark:text-white">
+                          ₹{item.total}
+                        </td>
+
+                      </tr>
+
+                    ))}
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+              {/* SUMMARY */}
+              <div className="mt-6 grid md:grid-cols-4 gap-4">
+
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-4">
+
+                  <p className="text-gray-500 text-sm">
+                    Subtotal
+                  </p>
+
+                  <h3 className="text-xl font-bold dark:text-white">
+                    ₹{bill.subtotal?.toFixed(2)}
+                  </h3>
+
+                </div>
+
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-4">
+
+                  <p className="text-gray-500 text-sm">
+                    Discount
+                  </p>
+
+                  <h3 className="text-xl font-bold text-red-500">
+                    {bill.discount}%
+                  </h3>
+
+                </div>
+
+                <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-4">
+
+                  <p className="text-gray-500 text-sm">
+                    GST
+                  </p>
+
+                  <h3 className="text-xl font-bold dark:text-white">
+                    ₹
+                    {(
+                      (bill.cgst || 0) +
+                      (bill.sgst || 0)
+                    ).toFixed(2)}
+                  </h3>
+
+                </div>
+
+                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-4 text-white">
+
+                  <p className="text-sm text-white/70">
+                    Grand Total
+                  </p>
+
+                  <h3 className="text-2xl font-extrabold">
+                    ₹{bill.grandTotal?.toFixed(2)}
+                  </h3>
+
+                </div>
+
+              </div>
+
             </div>
 
-            <button
-              onClick={() => setSelectedBill(null)}
-              className="mt-4 bg-gray-800 text-white px-4 py-2 rounded"
-            >
-              Close
-            </button>
-
-          </div>
+          ))}
 
         </div>
+
       )}
 
     </div>

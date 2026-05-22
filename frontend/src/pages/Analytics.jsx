@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 import {
@@ -9,265 +9,356 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from "recharts";
+
+import {
+  FiDollarSign,
+  FiShoppingCart,
+  FiTrendingUp,
+  FiAlertTriangle,
+  FiDownload,
+  FiBox,
+} from "react-icons/fi";
+
+const API =
+  "https://vyprox-billing-system-1.onrender.com";
 
 function Analytics() {
 
-  const [data, setData] = useState(null);
+  const [bills, setBills] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // ================= FETCH =================
   useEffect(() => {
-
-    fetchAnalytics();
-
+    fetchData();
   }, []);
 
-  // ================= FETCH ANALYTICS =================
-  const fetchAnalytics = async () => {
+  const fetchData = async () => {
 
     try {
 
-      const res = await axios.get(
-        "http://localhost:5000/api/bills/analytics"
+      const token =
+        localStorage.getItem("token");
+
+      const billRes = await axios.get(
+        `${API}/api/bills`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      const analytics = res.data;
-
-      // ================= WEEKLY LOGIC =================
-      // agar current month complete nahi hua
-      // to weekly chart dikhega
-
-      const today = new Date();
-
-      const currentMonth =
-        today.getMonth() + 1;
-
-      const currentYear =
-        today.getFullYear();
-
-      const currentMonthKey =
-        `${currentYear}-${currentMonth}`;
-
-      const currentMonthData =
-        analytics.monthlySales.find(
-          (m) => m.month === currentMonthKey
-        );
-
-      const lastDateOfMonth = new Date(
-        currentYear,
-        currentMonth,
-        0
-      ).getDate();
-
-      const currentDate = today.getDate();
-
-      // month complete?
-      const monthCompleted =
-        currentDate >= lastDateOfMonth;
-
-      // ================= DUMMY WEEKLY DATA =================
-      // jab tak month complete nahi hota
-
-      const weeklySales = [
+      const productRes = await axios.get(
+        `${API}/api/products`,
         {
-          name: "Week 1",
-          revenue:
-            Math.floor(
-              analytics.totalRevenue * 0.20
-            ),
-        },
-        {
-          name: "Week 2",
-          revenue:
-            Math.floor(
-              analytics.totalRevenue * 0.25
-            ),
-        },
-        {
-          name: "Week 3",
-          revenue:
-            Math.floor(
-              analytics.totalRevenue * 0.30
-            ),
-        },
-        {
-          name: "Week 4",
-          revenue:
-            Math.floor(
-              analytics.totalRevenue * 0.25
-            ),
-        },
-      ];
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      analytics.chartData = monthCompleted
-        ? analytics.monthlySales.map((m) => ({
-            name: m.month,
-            revenue: m.revenue,
-          }))
-        : weeklySales;
+      setBills(
+        billRes.data?.bills ||
+        billRes.data?.data ||
+        []
+      );
 
-      analytics.chartTitle = monthCompleted
-        ? "Monthly Revenue"
-        : "Weekly Revenue";
-
-      setData(analytics);
+      setProducts(
+        productRes.data?.products ||
+        productRes.data?.data ||
+        []
+      );
 
     } catch (err) {
 
-      console.log(err);
+      console.log(
+        "Analytics Error:",
+        err.response?.data || err.message
+      );
+
+    } finally {
+
+      setLoading(false);
 
     }
   };
 
-  // ================= LOADING =================
-  if (!data) {
+  // ================= STATS =================
+  const totalRevenue = useMemo(() => {
+
+    return bills.reduce(
+      (acc, bill) =>
+        acc + (bill.grandTotal || 0),
+      0
+    );
+
+  }, [bills]);
+
+  const totalOrders = bills.length;
+
+  const totalProducts = products.length;
+
+  const todayRevenue = useMemo(() => {
+
+    const today = new Date().toDateString();
+
+    return bills
+      .filter(
+        (bill) =>
+          new Date(
+            bill.createdAt
+          ).toDateString() === today
+      )
+      .reduce(
+        (acc, bill) =>
+          acc + (bill.grandTotal || 0),
+        0
+      );
+
+  }, [bills]);
+
+  // ================= PAYMENT PIE =================
+  const paymentData = useMemo(() => {
+
+    let cash = 0;
+    let upi = 0;
+    let card = 0;
+
+    bills.forEach((bill) => {
+
+      if (bill.paymentMode === "Cash")
+        cash++;
+
+      else if (
+        bill.paymentMode === "UPI"
+      )
+        upi++;
+
+      else if (
+        bill.paymentMode === "Card"
+      )
+        card++;
+
+    });
+
+    return [
+      {
+        name: "Cash",
+        value: cash,
+      },
+      {
+        name: "UPI",
+        value: upi,
+      },
+      {
+        name: "Card",
+        value: card,
+      },
+    ];
+
+  }, [bills]);
+
+  const COLORS = [
+    "#6366f1",
+    "#8a0648",
+    "#056042",
+  ];
+
+  // ================= WEEKLY CHART =================
+  const weeklyData = [
+    { name: "Mon", sales: 1200 },
+    { name: "Tue", sales: 2400 },
+    { name: "Wed", sales: 1800 },
+    { name: "Thu", sales: 3100 },
+    { name: "Fri", sales: 2700 },
+    { name: "Sat", sales: 4500 },
+    { name: "Sun", sales: 3900 },
+  ];
+
+  // ================= MONTHLY CHART =================
+  const monthlyData = [
+    { month: "Jan", revenue: 12000 },
+    { month: "Feb", revenue: 18000 },
+    { month: "Mar", revenue: 22000 },
+    { month: "Apr", revenue: 28000 },
+    { month: "May", revenue: 35000 },
+    { month: "Jun", revenue: 42000 },
+  ];
+
+  // ================= TOP PRODUCTS =================
+  const topProducts =
+    products.slice(0, 5);
+
+  // ================= LOW STOCK =================
+  const lowStockProducts =
+    products.filter(
+      (p) => p.quantity <= 5
+    );
+
+  // ================= EXPORT =================
+  const downloadReport = () => {
+    window.print();
+  };
+
+  if (loading) {
 
     return (
-
-      <div className="flex items-center justify-center h-screen">
-
-        <h1 className="text-3xl font-bold animate-pulse">
-          Loading Analytics...
-        </h1>
-
+      <div className="text-2xl font-bold dark:text-white">
+        Loading Analytics...
       </div>
     );
   }
 
   return (
 
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div>
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-5 mb-8">
 
         <div>
 
-          <h1 className="text-4xl font-bold">
+          <h1 className="text-4xl font-extrabold text-gray-800 dark:text-white">
             Analytics Dashboard
           </h1>
 
-          <p className="text-gray-500 mt-2">
-            Vyprox Billing System Insights
+          <p className="text-gray-500 dark:text-gray-300 mt-2">
+            Professional sales insights
           </p>
 
         </div>
+
+        <button
+          onClick={downloadReport}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-2xl font-bold flex items-center gap-3 shadow-xl"
+        >
+
+          <FiDownload />
+
+          Export Report
+
+        </button>
 
       </div>
 
       {/* STATS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
 
-        {/* REVENUE CARD */}
-        <div className="bg-white p-8 rounded-2xl shadow-lg hover:scale-105 transition">
+        {/* REVENUE */}
+        <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-3xl p-6 shadow-2xl">
 
-          <p className="text-gray-500 text-lg">
-            Total Revenue
-          </p>
+          <div className="flex justify-between items-center">
 
-          <h2 className="text-5xl font-bold text-green-600 mt-3">
-            ₹{data.totalRevenue}
-          </h2>
+            <div>
 
-        </div>
+              <p className="text-white/70">
+                Total Revenue
+              </p>
 
-        {/* BILL CARD */}
-        <div className="bg-white p-8 rounded-2xl shadow-lg hover:scale-105 transition">
+              <h2 className="text-4xl font-extrabold mt-3">
+                ₹{totalRevenue.toFixed(2)}
+              </h2>
 
-          <p className="text-gray-500 text-lg">
-            Total Bills
-          </p>
+            </div>
 
-          <h2 className="text-5xl font-bold text-blue-600 mt-3">
-            {data.totalBills}
-          </h2>
-
-        </div>
-
-      </div>
-
-      {/* CHART SECTION */}
-      <div className="bg-white rounded-2xl shadow-xl p-6">
-
-        <div className="flex justify-between items-center mb-6">
-
-          <div>
-
-            <h2 className="text-3xl font-bold">
-              💹 {data.chartTitle}
-            </h2>
-
-            <p className="text-gray-500 mt-1">
-              Animated Revenue Overview
-            </p>
+            <FiDollarSign className="text-5xl opacity-70" />
 
           </div>
 
         </div>
 
-        {/* AREA CHART */}
-        <div className="h-[450px] mb-10">
+        {/* TODAY */}
+        <div className="bg-gradient-to-br from-pink-500 to-purple-700 text-white rounded-3xl p-6 shadow-2xl">
 
-          <ResponsiveContainer width="100%" height="100%">
+          <div className="flex justify-between items-center">
 
-            <AreaChart data={data.chartData}>
+            <div>
 
-              <defs>
+              <p className="text-white/70">
+                Today Sales
+              </p>
 
-                <linearGradient
-                  id="colorRevenue"
-                  x1="0"
-                  y1="0"
-                  x2="0"
-                  y2="1"
-                >
+              <h2 className="text-4xl font-extrabold mt-3">
+                ₹{todayRevenue.toFixed(2)}
+              </h2>
 
-                  <stop
-                    offset="5%"
-                    stopColor="#22c55e"
-                    stopOpacity={0.8}
-                  />
+            </div>
 
-                  <stop
-                    offset="95%"
-                    stopColor="#22c55e"
-                    stopOpacity={0}
-                  />
+            <FiTrendingUp className="text-5xl opacity-70" />
 
-                </linearGradient>
-
-              </defs>
-
-              <CartesianGrid strokeDasharray="3 3" />
-
-              <XAxis dataKey="name" />
-
-              <YAxis />
-
-              <Tooltip />
-
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="#22c55e"
-                fillOpacity={1}
-                fill="url(#colorRevenue)"
-                animationDuration={2000}
-              />
-
-            </AreaChart>
-
-          </ResponsiveContainer>
+          </div>
 
         </div>
 
-        {/* BAR CHART */}
-        <div className="h-[450px]">
+        {/* ORDERS */}
+        <div className="bg-gradient-to-br from-emerald-500 to-green-700 text-white rounded-3xl p-6 shadow-2xl">
 
-          <ResponsiveContainer width="100%" height={350}>
+          <div className="flex justify-between items-center">
 
-            <BarChart data={data.chartData}>
+            <div>
+
+              <p className="text-white/70">
+                Total Orders
+              </p>
+
+              <h2 className="text-4xl font-extrabold mt-3">
+                {totalOrders}
+              </h2>
+
+            </div>
+
+            <FiShoppingCart className="text-5xl opacity-70" />
+
+          </div>
+
+        </div>
+
+        {/* PRODUCTS */}
+        <div className="bg-gradient-to-br from-orange-500 to-red-600 text-white rounded-3xl p-6 shadow-2xl">
+
+          <div className="flex justify-between items-center">
+
+            <div>
+
+              <p className="text-white/70">
+                Total Products
+              </p>
+
+              <h2 className="text-4xl font-extrabold mt-3">
+                {totalProducts}
+              </h2>
+
+            </div>
+
+            <FiBox className="text-5xl opacity-70" />
+
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* CHARTS */}
+      <div className="grid lg:grid-cols-2 gap-6 mb-8">
+
+        {/* WEEKLY */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl">
+
+          <h2 className="text-2xl font-bold mb-6 dark:text-white">
+            Weekly Sales
+          </h2>
+
+          <ResponsiveContainer width="100%" height={300}>
+
+            <BarChart data={weeklyData}>
 
               <CartesianGrid strokeDasharray="3 3" />
 
@@ -278,15 +369,194 @@ function Analytics() {
               <Tooltip />
 
               <Bar
-                dataKey="revenue"
+                dataKey="sales"
+                fill="#6366f1"
                 radius={[10, 10, 0, 0]}
-                fill="#3b82f6"
-                animationDuration={2500}
               />
 
             </BarChart>
 
           </ResponsiveContainer>
+
+        </div>
+
+        {/* MONTHLY */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl">
+
+          <h2 className="text-2xl font-bold mb-6 dark:text-white">
+            Monthly Revenue
+          </h2>
+
+          <ResponsiveContainer width="100%" height={300}>
+
+            <LineChart data={monthlyData}>
+
+              <CartesianGrid strokeDasharray="3 3" />
+
+              <XAxis dataKey="month" />
+
+              <YAxis />
+
+              <Tooltip />
+
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#5a0831"
+                strokeWidth={4}
+              />
+
+            </LineChart>
+
+          </ResponsiveContainer>
+
+        </div>
+
+      </div>
+
+      {/* LOWER */}
+      <div className="grid lg:grid-cols-3 gap-6">
+
+        {/* PIE */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl">
+
+          <h2 className="text-2xl font-bold mb-6 dark:text-white">
+            Payment Methods
+          </h2>
+
+          <ResponsiveContainer width="100%" height={300}>
+
+            <PieChart>
+
+              <Pie
+                data={paymentData}
+                dataKey="value"
+                nameKey="name"
+                outerRadius={100}
+                label
+              >
+
+                {paymentData.map(
+                  (entry, index) => (
+
+                    <Cell
+                      key={index}
+                      fill={
+                        COLORS[
+                          index %
+                          COLORS.length
+                        ]
+                      }
+                    />
+
+                  )
+                )}
+
+              </Pie>
+
+              <Tooltip />
+
+              <Legend />
+
+            </PieChart>
+
+          </ResponsiveContainer>
+
+        </div>
+
+        {/* TOP PRODUCTS */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl">
+
+          <h2 className="text-2xl font-bold mb-6 dark:text-white">
+            Top Products
+          </h2>
+
+          <div className="space-y-4">
+
+            {topProducts.map((product) => (
+
+              <div
+                key={product._id}
+                className="flex justify-between items-center bg-slate-100 dark:bg-slate-800 rounded-2xl p-4"
+              >
+
+                <div>
+
+                  <h3 className="font-bold dark:text-white">
+                    {product.name}
+                  </h3>
+
+                  <p className="text-sm text-gray-500">
+                    ₹{product.price}
+                  </p>
+
+                </div>
+
+                <div className="font-bold text-indigo-600">
+                  {product.quantity}
+                </div>
+
+              </div>
+
+            ))}
+
+          </div>
+
+        </div>
+
+        {/* LOW STOCK */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl">
+
+          <div className="flex items-center gap-3 mb-6">
+
+            <FiAlertTriangle className="text-red-500 text-2xl" />
+
+            <h2 className="text-2xl font-bold dark:text-white">
+              Low Stock
+            </h2>
+
+          </div>
+
+          {lowStockProducts.length === 0 ? (
+
+            <p className="text-green-600 font-semibold">
+              All products available
+            </p>
+
+          ) : (
+
+            <div className="space-y-4">
+
+              {lowStockProducts.map((product) => (
+
+                <div
+                  key={product._id}
+                  className="flex justify-between items-center bg-red-50 dark:bg-slate-800 rounded-2xl p-4"
+                >
+
+                  <div>
+
+                    <h3 className="font-bold dark:text-white">
+                      {product.name}
+                    </h3>
+
+                    <p className="text-sm text-gray-500">
+                      Low Quantity
+                    </p>
+
+                  </div>
+
+                  <div className="text-red-600 font-bold text-xl">
+                    {product.quantity}
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          )}
 
         </div>
 

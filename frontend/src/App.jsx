@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -17,27 +17,35 @@ function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* PUBLIC ROUTES */}
+        {/* PUBLIC */}
         <Route path="/" element={<Login />} />
         <Route path="/forgot-password" element={<ForgetPassword />} />
 
-        {/* PROTECTED ROUTES */}
+        {/* PROTECTED APP */}
         <Route
-          path="/"
+          path="/app"
           element={
             <ProtectedRoute>
               <Layout />
             </ProtectedRoute>
           }
         >
+          {/* default redirect */}
+          <Route index element={<Navigate to="dashboard" replace />} />
+
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="products" element={<Products />} />
           <Route path="billing" element={<Billing />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="invoice" element={<InvoicePage />} />
           <Route path="history" element={<BillHistory />} />
-          
         </Route>
+
+        {/* fallback */}
+        <Route
+          path="*"
+          element={<Navigate to="/" replace />}
+        />
 
       </Routes>
     </BrowserRouter>

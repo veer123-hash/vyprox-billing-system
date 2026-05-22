@@ -1,5 +1,4 @@
 const express = require("express");
-
 const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
@@ -14,109 +13,28 @@ const {
     searchProducts,
     lowStockAlert,
     createBill,
-    getBills,
-    getDashboard,
-    getAnalytics,
-    getMonthlyAnalytics
+    getBills
 } = require("../controllers/productController");
 
+router.post("/add", authMiddleware, adminMiddleware, addProduct);
 
-// ================= PRODUCTS =================
+router.get("/", authMiddleware, getProducts);
 
-// Add Product (ADMIN ONLY)
-router.post(
-    "/add",
-    authMiddleware,
-    adminMiddleware,
-    addProduct
-);
+router.put("/update/:id", authMiddleware, adminMiddleware, updateProduct);
 
-// Get All Products
-router.get(
-    "/",
-    authMiddleware,
-    getProducts
-);
+router.delete("/delete/:id", authMiddleware, adminMiddleware, deleteProduct);
 
-// Update Product (ADMIN ONLY)
-router.put(
-    "/update/:id",
-    authMiddleware,
-    adminMiddleware,
-    updateProduct
-);
+router.put("/stock/:id", authMiddleware, adminMiddleware, updateStock);
 
-// Delete Product (ADMIN ONLY)
-router.delete(
-    "/delete/:id",
-    authMiddleware,
-    adminMiddleware,
-    deleteProduct
-);
+router.get("/low-stock", authMiddleware, lowStockAlert);
 
-// ================= STOCK =================
+router.get("/search", authMiddleware, searchProducts);
 
-// Update Stock
-router.put(
-    "/stock/:id",
-    authMiddleware,
-    adminMiddleware,
-    updateStock
-);
+router.post("/bill", authMiddleware, createBill);
 
-// Low Stock Alert
-router.get(
-    "/low-stock",
-    authMiddleware,
-    lowStockAlert
-);
+router.get("/bills", authMiddleware, getBills);
 
-// ================= SEARCH =================
-
-// Search Products
-router.get(
-    "/search",
-    authMiddleware,
-    searchProducts
-);
-
-// ================= BILLING =================
-
-// Create Bill
-router.post(
-    "/bill",
-    authMiddleware,
-    createBill
-);
-
-// Get Bills
-router.get(
-    "/bills",
-    authMiddleware,
-    getBills
-);
-
-// ================= DASHBOARD =================
-
-// Dashboard Data
-router.get(
-    "/dashboard",
-    authMiddleware,
-    getDashboard
-);
-
-// Analytics
-router.get(
-    "/analytics",
-    authMiddleware,
-    getAnalytics
-);
-
-// Monthly Analytics
-router.get(
-    "/monthly-analytics",
-    authMiddleware,
-    getMonthlyAnalytics
-);
+console.log("authMiddleware:", authMiddleware);
+console.log("adminMiddleware:", adminMiddleware);
 
 module.exports = router;

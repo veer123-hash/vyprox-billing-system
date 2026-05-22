@@ -20,13 +20,16 @@ function AdminDashboard() {
   });
 
   const fetchAnalytics = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/bills/analytics");
-      setData(res.data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
+  try {
+    const API = "https://vyprox-billing-system-1.onrender.com";
+
+    const res = await axios.get(`${API}/api/bills/analytics`);
+
+    setData(res.data);
+  } catch (err) {
+    console.log(err);
+  }
+};
 
   useEffect(() => {
     fetchAnalytics();

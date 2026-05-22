@@ -1,19 +1,25 @@
 import axios from "axios";
 
+const API = "https://vyprox-billing-system-1.onrender.com";
+
 function Invoice() {
 
   const generateInvoice = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/api/invoice/generate", {
-        customerName: "Rahul Sharma",
-        invoiceNumber: "INV-1001",
-        items: [
-          { name: "Laptop", qty: 1, price: 55000 },
-          { name: "Mouse", qty: 2, price: 500 }
-        ]
-      });
+      const res = await axios.post(
+        `${API}/api/invoice/generate`,
+        {
+          customerName: "Rahul Sharma",
+          invoiceNumber: "INV-1001",
+          items: [
+            { name: "Laptop", qty: 1, price: 55000 },
+            { name: "Mouse", qty: 2, price: 500 }
+          ]
+        }
+      );
 
-      window.open(`http://localhost:5000${res.data.file}`);
+      // PDF / file open
+      window.open(`${API}${res.data.file}`);
 
     } catch (error) {
       console.log(error);
@@ -23,6 +29,7 @@ function Invoice() {
 
   return (
     <div className="p-6">
+
       <h1 className="text-2xl font-bold mb-4">
         Invoice Generator
       </h1>
@@ -33,6 +40,7 @@ function Invoice() {
       >
         Generate Invoice
       </button>
+
     </div>
   );
 }
