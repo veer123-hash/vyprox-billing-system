@@ -16,6 +16,8 @@ import {
   HiOutlineSun,
   HiOutlineArrowRightOnRectangle,
   HiOutlineSparkles,
+  HiOutlineBars3,
+  HiOutlineXMark,
 } from "react-icons/hi2";
 
 function Layout() {
@@ -24,6 +26,8 @@ function Layout() {
 
   // ================= DARK MODE =================
   const [darkMode, setDarkMode] = useState(false);
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
 
@@ -85,7 +89,18 @@ function Layout() {
     <div className="flex min-h-screen bg-gradient-to-br from-slate-100 via-indigo-100 to-purple-100 dark:from-black dark:via-slate-950 dark:to-slate-900 transition-all duration-500 overflow-hidden">
 
       {/* ================= SIDEBAR ================= */}
-      <div className="fixed left-0 top-0 h-screen w-72 bg-black/80 backdrop-blur-2xl border-r border-white/10 text-white p-6 flex flex-col justify-between shadow-[0_0_40px_rgba(99,102,241,0.25)] z-50">
+      <div
+  className={`fixed top-0 left-0 h-screen w-72 z-50
+  bg-black/80 backdrop-blur-2xl border-r border-white/10
+  text-white p-6 flex flex-col justify-between
+  shadow-[0_0_40px_rgba(99,102,241,0.25)]
+  transition-transform duration-300
+  ${
+    sidebarOpen
+      ? "translate-x-0"
+      : "-translate-x-full md:translate-x-0"
+  }`}
+>
 
         <div>
 
@@ -128,6 +143,7 @@ function Layout() {
                 <Link
                   key={menu.path}
                   to={menu.path}
+                   onClick={() => setSidebarOpen(false)}
                   className={`group relative flex items-center gap-4 px-5 py-4 rounded-2xl overflow-hidden transition-all duration-300 ${
                     active
                       ? "bg-gradient-to-r from-indigo-500 to-purple-600 shadow-[0_0_30px_rgba(99,102,241,0.6)] scale-[1.02]"
@@ -190,26 +206,43 @@ function Layout() {
       </div>
 
       {/* ================= MAIN ================= */}
-      <div className="flex-1 ml-72 p-6 min-h-screen">
+     <div className="flex-1 md:ml-72 p-4 md:p-6 min-h-screen">
 
         {/* ================= TOPBAR ================= */}
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/20 dark:border-slate-700 rounded-3xl p-6 shadow-2xl flex items-center justify-between mb-6">
+        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/20 dark:border-slate-700 rounded-3xl p-4 md:p-6 shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
 
           {/* LEFT */}
-          <div>
+         
+<div className="flex items-center gap-3">
 
-            <h2 className="text-4xl font-black text-slate-800 dark:text-white">
-              Vyprox Dashboard
-            </h2>
+  {/* MOBILE MENU BUTTON */}
+  <button
+    className="md:hidden text-3xl text-slate-800 dark:text-white"
+    onClick={() => setSidebarOpen(!sidebarOpen)}
+  >
+    {sidebarOpen
+      ? <HiOutlineXMark />
+      : <HiOutlineBars3 />
+    }
+  </button>
 
-            <p className="text-slate-500 dark:text-slate-400 mt-2">
-              Welcome back, manage your business professionally.
-            </p>
+  <div>
 
-          </div>
+    <h2 className="text-4xl font-black text-slate-800 dark:text-white">
+      Vyprox Dashboard
+    </h2>
+
+    <p className="text-slate-500 dark:text-slate-400 mt-2">
+      Welcome back, manage your business professionally.
+    </p>
+
+  </div>
+
+</div>
 
           {/* RIGHT */}
-          <div className="flex items-center gap-4">
+         
+                <div className="flex flex-wrap items-center gap-3">
 
             {/* DARK MODE */}
             <button
