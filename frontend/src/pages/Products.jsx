@@ -13,7 +13,7 @@ import {
 } from "react-icons/fi";
 
 // 🔵 FIX 1: URL को लोकल सर्वर (localhost:5000) पर सेट किया
-const API = "http://localhost:5000";
+const API = "https://vyprox-billing-system-1.onrender.com";
 
 function Products() {
   const [products, setProducts] = useState([]);
