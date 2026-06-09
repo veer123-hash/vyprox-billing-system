@@ -1,21 +1,26 @@
 const Product = require("../models/Product");
 const Bill = require("../models/Bill");
 
-// ================= ADD PRODUCT =================
+// ================= ADD PRODUCT (FIXED) =================
 const addProduct = async (req, res) => {
   try {
-    const { name, price, quantity, category } = req.body;
+    // 🔵 FIX 1: req.body से 'stock' और 'quantity' दोनों को निकाल लिया ताकि कोई भी फ्रंटएंड कोड काम कर सके
+    const { name, price, quantity, stock, category } = req.body;
 
-    if (!name || !price || !quantity || !category) {
+    // 🔵 FIX 2: वास्तविक स्टॉक वैल्यू को पहचानें (चाहे फ्रंटएंड 'stock' भेजे या 'quantity')
+    const finalStock = stock !== undefined ? stock : quantity;
+
+    // वैलिडेशन चेक
+    if (!name || !price || finalStock === undefined || !category) {
       return res.status(400).json({
-        message: "All fields are required",
+        message: "All fields (Name, Price, Quantity/Stock, Category) are required",
       });
     }
 
     const product = new Product({
       name,
       price,
-      stock: quantity,
+      stock: finalStock, // मोंगूज मॉडल में हमेशा 'stock' ही जाएगा
       category,
     });
 
@@ -37,7 +42,7 @@ const addProduct = async (req, res) => {
 // ================= GET PRODUCTS =================
 const getProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    const products = await Product.find().sort({ createdAt: -1 }); // नए प्रोडक्ट ऊपर दिखेंगे
 
     res.json({
       message: "All products fetched",
@@ -52,13 +57,28 @@ const getProducts = async (req, res) => {
   }
 };
 
-// ================= UPDATE PRODUCT =================
+// ================= UPDATE PRODUCT (FIXED) =================
 const updateProduct = async (req, res) => {
   try {
+    const { name, price, quantity, stock, category } = req.body;
+    
+    // अपडेट के समय भी पक्का करें कि स्टॉक की वैल्यू सही मैप हो रही है
+    const finalStock = stock !== undefined ? stock : quantity;
+
+    const updateData = {
+      name,
+      price,
+      category,
+    };
+    
+    if (finalStock !== undefined) {
+      updateData.stock = finalStock;
+    }
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      req.body,
-      { new: true }
+      updateData,
+      { new: true, runValidators: true }
     );
 
     if (!product) {
@@ -114,7 +134,7 @@ const updateStock = async (req, res) => {
       });
     }
 
-    product.stock = req.body.stock;
+    product.stock = req.body.stock !== undefined ? req.body.stock : req.body.quantity;
     await product.save();
 
     res.json({
@@ -261,7 +281,7 @@ const getBills = async (req, res) => {
   }
 };
 
-// ================= EXPORT (FINAL FIX) =================
+// ================= EXPORT =================
 module.exports = {
   addProduct,
   getProducts,
