@@ -1,0 +1,87 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================================================= */
+/* 🖨️ MASTER HARDWARE PRINT & PARCHI CONFIGURATION (NO CONFLICTS)           */
+/* ========================================================================= */
+@media print {
+  /* 1. स्क्रीन की बाकी सभी फालतू चीज़ें (बटन, नेवबार, बैकग्राउंड) को पूरी तरह गायब करो */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* 2. केवल और केवल बिल वाले एरिया को और उसके अंदर के टेक्स्ट को विज़िबल करो */
+  #printable-invoice-area, #printable-invoice-area * {
+    visibility: visible;
+  }
+  
+  /* 3. प्रिंटर हेड के लिए लेआउट को टॉप-लेफ्ट में लॉक करो ताकि पेपर वेस्ट न हो */
+  #printable-invoice-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 0px !important;
+    margin: 0px !important;
+    color: #000000 !important; /* शुद्ध गाढ़ा काला रंग ताकि इंक साफ छपे */
+    font-smooth: never;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* 4. ⚡ 3-इंच थर्मल प्रिंटर (80mm रोल) के लिए कड़क रिस्पॉन्सिव साइज फिक्स */
+  .w-\[80mm\] {
+    width: 74mm !important; /* बिल को थर्मल पेपर के कोनों से कटने या फटने से 100% बचाएगा */
+    max-width: 74mm !important;
+  }
+
+  /* 5. ब्राउज़र के डिफ़ॉल्ट हेडर/फुटर (URL और तारीख) को हटाकर साफ मार्जिन सेट करना */
+  @page {
+    size: auto;
+    margin: 4mm 6mm;
+  }
+}
+
+/* ⚙️ मशीन गियर आइकन के धीरे-धीरे घूमने के लिए एनिमेशन */
+.animate-spin-slow {
+  animation: spin 6s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
