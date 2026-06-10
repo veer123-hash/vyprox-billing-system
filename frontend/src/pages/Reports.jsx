@@ -25,31 +25,43 @@ function Reports() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      // बिलों का डेटा लाएं
+      // 1. Fetch all products to map live accurate purchase prices
+      const productsRes = await axios.get(`${API}/api/products`, { headers });
+      const productsList = productsRes.data?.products || [];
+      
+      // Create a fast lookup map for purchase prices
+      const purchasePriceMap = {};
+      productsList.forEach(p => {
+        purchasePriceMap[p._id] = p.purchasePrice || p.sellingPrice * 0.8; // Fallback only if missing
+      });
+
+      // 2. Fetch all bills data
       const billsRes = await axios.get(`${API}/api/bills`, { headers });
       const allBills = billsRes.data?.bills || [];
 
       let revenue = 0;
       let costOfGoods = 0;
-      let pmBreakdown = { Cash: 0, "UPI/QR Code": 0, Card: 0, Finance: 0 };
+      
+      // Fixed: Mapped perfectly to match uppercase database values from billing screen
+      let pmBreakdown = { "CASH": 0, "UPI": 0, "CARD": 0, "CREDIT (UDHAAR)": 0 };
       let productSalesCount = {};
 
       allBills.forEach((bill) => {
         revenue += bill.grandTotal;
 
-        // पेमेंट मोड ब्रेकडाउन
-        if (bill.paymentMode === "Cash") pmBreakdown.Cash += bill.grandTotal;
-        else if (bill.paymentMode === "UPI/QR Code") pmBreakdown["UPI/QR Code"] += bill.grandTotal;
-        else if (bill.paymentMode === "Card") pmBreakdown.Card += bill.grandTotal;
-        else pmBreakdown.Finance += bill.grandTotal;
+        // Perfect Payment Mode Breakdown Match
+        if (bill.paymentMode === "CASH") pmBreakdown["CASH"] += bill.grandTotal;
+        else if (bill.paymentMode === "UPI") pmBreakdown["UPI"] += bill.grandTotal;
+        else if (bill.paymentMode === "CARD") pmBreakdown["CARD"] += bill.grandTotal;
+        else pmBreakdown["CREDIT (UDHAAR)"] += bill.grandTotal;
 
-        // आइटम्स और प्रॉफिट कैलकुलेशन
+        // Accurate Item and Cost calculation based on live database purchasePrice
         bill.items?.forEach((item) => {
-          // मान लेते हैं कि आइटम की खरीद कीमत (Purchase Price) बिक्री कीमत से 20% कम थी (मॉक प्रॉफिट लॉजिक के लिए)
-          const estimatedCost = (item.price * 0.8) * item.quantity;
-          costOfGoods += estimatedCost;
+          const originalPurchasePrice = purchasePriceMap[item.productId] || (item.price * 0.8);
+          const accurateCost = originalPurchasePrice * item.quantity;
+          costOfGoods += accurateCost;
 
-          // टॉप सेलिंग प्रोडक्ट काउंट
+          // Top Selling Products Count
           productSalesCount[item.name] = (productSalesCount[item.name] || 0) + item.quantity;
         });
       });
@@ -57,7 +69,7 @@ function Reports() {
       const profit = revenue - costOfGoods;
       const margin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : 0;
 
-      // टॉप प्रोडक्ट्स को सॉर्ट करें
+      // Sort Top Products based on sales volume
       const sortedProducts = Object.keys(productSalesCount)
         .map((name) => ({ name, qty: productSalesCount[name] }))
         .sort((a, b) => b.qty - a.qty)
@@ -69,16 +81,19 @@ function Reports() {
         netProfit: Math.round(profit),
         marginPercentage: margin,
       });
+
+      // Handle empty states gracefully if store is brand new
       setTopProducts(sortedProducts.length > 0 ? sortedProducts : [
-        { name: "Samsung Galaxy M34", qty: 45 },
-        { name: "Wireless Boat Earbuds", qty: 38 },
-        { name: "Mi Smart TV 32 Inch", qty: 22 },
-        { name: "HP Laptop 15s", qty: 14 }
+        { name: "Samsung Galaxy M34", qty: 0 },
+        { name: "Wireless Boat Earbuds", qty: 0 },
+        { name: "Mi Smart TV 32 Inch", qty: 0 },
+        { name: "HP Laptop 15s", qty: 0 }
       ]);
-      setPaymentBreakdown(revenue > 0 ? pmBreakdown : { Cash: 45000, "UPI/QR Code": 85000, Card: 12000, Finance: 35000 });
+      
+      setPaymentBreakdown(revenue > 0 ? pmBreakdown : { "CASH": 0, "UPI": 0, "CARD": 0, "CREDIT (UDHAAR)": 0 });
       setLoading(false);
     } catch (err) {
-      console.error("रिपोर्ट लोड करने में एरर:", err);
+      console.error("report load error:", err);
       setLoading(false);
     }
   };
@@ -88,7 +103,7 @@ function Reports() {
   return (
     <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-6">
       
-      {/* 🌟 हेडर */}
+      {/* 🌟 HEADER SECTION */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-[20px] shadow-sm border dark:border-slate-800">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
@@ -101,35 +116,35 @@ function Reports() {
         </button>
       </div>
 
-      {/* 💰 प्रॉफिट कार्ड्स ग्रिड */}
+      {/* 💰 FINANCIAL STATS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         
-        {/* कुल बिक्री */}
+        {/* Total Turnover */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] border dark:border-slate-800 shadow-md">
           <p className="text-xs uppercase tracking-wider font-bold text-gray-400">Total Gross Turnover</p>
-          <h3 className="text-2xl sm:text-3xl font-black mt-2 text-slate-900 dark:text-white">₹{summary.totalRevenue || "1,77,000"}</h3>
+          <h3 className="text-2xl sm:text-3xl font-black mt-2 text-slate-900 dark:text-white">₹{summary.totalRevenue.toLocaleString("en-IN")}</h3>
           <p className="text-[11px] text-emerald-600 font-bold mt-2 flex items-center gap-1"><FiTrendingUp /> कुल इनवॉइस अमाउंट</p>
         </div>
 
-        {/* शुद्ध मुनाफा */}
+        {/* Real Net Profit */}
         <div className="bg-gradient-to-br from-emerald-600 to-teal-700 p-5 rounded-[24px] text-white shadow-lg">
           <p className="text-xs uppercase tracking-wider font-bold text-emerald-100">Estimated Net Profit</p>
-          <h3 className="text-2xl sm:text-3xl font-black mt-2">₹{summary.netProfit || "35,400"}</h3>
-          <p className="text-[11px] text-emerald-200 mt-2 flex items-center gap-1"><FiArrowUpRight /> मार्जिन: {summary.marginPercentage || "20"}% मुनाफे के साथ</p>
+          <h3 className="text-2xl sm:text-3xl font-black mt-2">₹{summary.netProfit.toLocaleString("en-IN")}</h3>
+          <p className="text-[11px] text-emerald-200 mt-2 flex items-center gap-1"><FiArrowUpRight /> मार्जिन: {summary.marginPercentage}% शुद्ध मुनाफे के साथ</p>
         </div>
 
-        {/* माल की लागत */}
+        {/* Real Cost of Stock */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] border dark:border-slate-800 shadow-md">
           <p className="text-xs uppercase tracking-wider font-bold text-gray-400">Cost of Goods Sold (COGS)</p>
-          <h3 className="text-2xl sm:text-3xl font-black mt-2 text-red-500">₹{summary.totalCost || "1,41,600"}</h3>
+          <h3 className="text-2xl sm:text-3xl font-black mt-2 text-red-500">₹{summary.totalCost.toLocaleString("en-IN")}</h3>
           <p className="text-[11px] text-gray-400 mt-2">स्टॉक की अपनी खुद की खरीद लागत</p>
         </div>
       </div>
 
-      {/* लोअर सेक्शन: टॉप प्रोडक्ट्स और पेमेंट्स */}
+      {/* LOWER DASHBOARD PANEL */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* 📦 टॉप सेलिंग प्रोडक्ट्स */}
+        {/* 📦 TOP SELLING PRODUCTS */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] border dark:border-slate-800 shadow-md space-y-4">
           <h2 className="text-base font-black dark:text-white flex items-center gap-2 border-b pb-3">
             <FiBox className="text-indigo-500" /> Fast Moving Items (Top Selling)
@@ -149,7 +164,7 @@ function Reports() {
           </div>
         </div>
 
-        {/* 💳 पेमेंट मोड्स का बंटवारा */}
+        {/* 💳 REAL PAYMENT MODE COLLECTIONS */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] border dark:border-slate-800 shadow-md space-y-4">
           <h2 className="text-base font-black dark:text-white flex items-center gap-2 border-b pb-3">
             <FiGrid className="text-emerald-500" /> Payment Mode Collections
@@ -158,7 +173,7 @@ function Reports() {
             {Object.keys(paymentBreakdown).map((mode, idx) => (
               <div key={idx} className="p-4 border dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 rounded-2xl text-center">
                 <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">{mode}</p>
-                <p className="text-xl font-black text-slate-800 dark:text-white mt-1">₹{paymentBreakdown[mode]}</p>
+                <p className="text-xl font-black text-slate-800 dark:text-white mt-1">₹{paymentBreakdown[mode].toLocaleString("en-IN")}</p>
               </div>
             ))}
           </div>
