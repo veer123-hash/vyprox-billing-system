@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import {
   FiPlus, FiTrash2, FiEdit, FiPackage, FiSearch, 
-  FiBox, FiLayers, FiDollarSign, FiSettings
+  FiBox, FiLayers, FiDollarSign, FiSettings, FiCalendar, FiTag
 } from "react-icons/fi";
 
-// 🔵 लाइव रेंडर एपीआई URL (इसे अपनी जरूरत के हिसाब से बदल सकते हैं)
 const API = "https://vyprox-billing-system-1.onrender.com";
 
 function Products() {
@@ -17,7 +16,7 @@ function Products() {
   // 🌟 DYNAMIC BUSINESS SELECTION STATE
   const [businessType, setBusinessType] = useState("General");
 
-  // 📝 COMMON STATES (जो हर बिजनेस में काम आएंगे)
+  // 📝 COMMON STATES
   const [name, setName] = useState("");
   const [brand, setBrand] = useState("");
   const [category, setCategory] = useState("");
@@ -34,7 +33,7 @@ function Products() {
 
   // 🌾 GROCERY / PHARMACY SPECIFIC STATES
   const [totalQuantity, setTotalQuantity] = useState("");
-  const [unitType, setUnitType] = useState("Pcs"); // Pcs, Kg, Ltr, Box
+  const [unitType, setUnitType] = useState("Pcs"); 
   const [batchNumber, setBatchNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
 
@@ -75,13 +74,13 @@ function Products() {
     e.preventDefault();
 
     if (!name.trim() || !purchasePrice || !sellingPrice || !category.trim()) {
-      return alert("कृपया नाम, खरीद मूल्य, बिक्री मूल्य और कैटेगरी ज़रूर भरें!");
+      return alert("🚀 Name, Purchase Price, Selling Price aur Category bharna zaroori hai!");
     }
 
     try {
       const token = localStorage.getItem("token");
 
-      // 🛠️ पेलोड को डायनेमिकली तैयार करना
+      // 🛠️ Dynamic Payload Generator (Unlimited Scalability Structure)
       let inventoryItems = [];
       if (businessType === "Electronics" && imeiOrSerial.trim()) {
         inventoryItems.push({ imeiOrSerial: imeiOrSerial.trim() });
@@ -104,12 +103,12 @@ function Products() {
         await axios.put(`${API}/api/products/update/${editingId}`, payload, {
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         });
-        alert("Product Updated Successfully ✅");
+        alert("Product Parameters Updated! 🔄");
       } else {
         await axios.post(`${API}/api/products/add`, payload, {
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         });
-        alert("Product Added Successfully ✅");
+        alert("Product Saved to Cloud Ledger! 🌐");
       }
 
       fetchProducts();
@@ -119,19 +118,20 @@ function Products() {
     }
   };
 
-  // ================= EDIT & DELETE =================
+  // ================= DELETE PRODUCT =================
   const deleteProduct = async (id) => {
-    if (!window.confirm("Delete this product?")) return;
+    if (!window.confirm("⚠️ Kya aap is product ko inventory se hatana chahte hain?")) return;
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`${API}/api/products/delete/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alert("Deleted Successfully");
+      alert("Product Deleted from Cloud Stock.");
       fetchProducts();
     } catch (err) { alert("Delete Failed"); }
   };
 
+  // ================= EDIT INITIATION =================
   const editProduct = (product) => {
     setEditingId(product._id);
     setBusinessType(product.businessType || "General");
@@ -159,59 +159,70 @@ function Products() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const filteredProducts = products.filter((p) => p.name?.toLowerCase().includes(search.toLowerCase()));
+  // 🧠 DEEP SEARCH ENGINE FOR UNLIMITED STOCKS
+  const filteredProducts = useMemo(() => {
+    if (!search.trim()) return products;
+    const target = search.toLowerCase();
+    return products.filter((p) => 
+      p.name?.toLowerCase().includes(target) ||
+      p.brand?.toLowerCase().includes(target) ||
+      p.category?.toLowerCase().includes(target) ||
+      p.barcode?.includes(target) ||
+      p.hsnCode?.includes(target)
+    );
+  }, [search, products]);
 
   return (
     <div className="p-4 max-w-7xl mx-auto space-y-6">
-      {/* HEADER */}
-      <div>
-        <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
-          Vyprox Universal Inventory
-        </h1>
-        <p className="text-gray-500 mt-1">एक सॉफ्टवेयर, हर बिजनेस के लिए अनुकूल।</p>
-      </div>
-
-      {/* FORM CONTAINER */}
-      <div className="bg-white dark:bg-slate-900 rounded-[24px] shadow-xl p-6 border dark:border-slate-800">
-        
-        {/* 🌟 STEP 1: SELECT BUSINESS TYPE DROP DOWN */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b pb-4 mb-6">
-          <div className="flex items-center gap-2">
-            <FiSettings className="text-xl text-indigo-600 animate-spin" />
-            <h2 className="text-xl font-bold dark:text-white">
-              {editingId ? "Modify Product" : "Add New Stock"}
-            </h2>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-gray-600 dark:text-gray-300">Business Type:</span>
-            <select 
-              value={businessType} 
-              onChange={(e) => { setBusinessType(e.target.value); resetForm(); }}
-              className="p-2 border rounded-xl bg-slate-50 dark:bg-slate-800 dark:text-white font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="General">General / Provision Store</option>
-              <option value="Electronics">Electronics & Mobile</option>
-              <option value="Grocery">Grocery / Supermarket</option>
-              <option value="Pharmacy">Pharmacy / Medical</option>
-              <option value="Garments">Garments & Clothing</option>
-            </select>
-          </div>
+      {/* HEADER SECTION */}
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-xl border border-gray-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent tracking-tight">
+            🛡️ Vyprox Universal Inventory
+          </h1>
+          <p className="text-gray-500 dark:text-gray-300 text-sm mt-1">
+            Total Unique SKUs: <span className="font-bold text-indigo-600">{filteredProducts.length} Items</span> (Unlimited Cloud Sync Activated)
+          </p>
         </div>
 
-        {/* FORM FIELDS */}
+        {/* BUSINESS CONTROL SELECTION */}
+        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-2 rounded-2xl border dark:border-slate-700">
+          <span className="font-bold text-xs text-gray-500 dark:text-gray-300 pl-2">Engine Mode:</span>
+          <select 
+            value={businessType} 
+            onChange={(e) => { setBusinessType(e.target.value); resetForm(); }}
+            className="p-2 border-0 bg-transparent text-sm font-black text-indigo-600 dark:text-indigo-400 outline-none cursor-pointer"
+          >
+            <option value="General">General Provision</option>
+            <option value="Electronics">Electronics & Mobile</option>
+            <option value="Grocery">Grocery Supermarket</option>
+            <option value="Pharmacy">Pharmacy / Medical</option>
+            <option value="Garments">Garments & Clothing</option>
+          </select>
+        </div>
+      </div>
+
+      {/* DYNAMIC FORM CONTAINER */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-6 border border-gray-100 dark:border-slate-800">
+        <div className="flex items-center gap-2 mb-6 border-b pb-3 dark:border-slate-800">
+          <FiSettings className="text-xl text-indigo-600 animate-spin" />
+          <h2 className="text-lg font-extrabold dark:text-white">
+            {editingId ? "Modify Product Parameters" : "Onboard New Stock Parameters"}
+          </h2>
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-4 text-sm">
+            {/* Global Fields */}
+            <input type="text" placeholder="Product Name *" value={name} onChange={(e) => setName(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white font-semibold focus:border-indigo-500 outline-none" />
+            <input type="text" placeholder="Brand / Company" value={brand} onChange={(e) => setBrand(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white font-semibold focus:border-indigo-500 outline-none" />
+            <input type="text" placeholder="Category" value={category} onChange={(e) => setCategory(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white font-semibold focus:border-indigo-500 outline-none" />
+            <input type="number" step="any" placeholder="Purchase Price (खरीद) *" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white font-semibold focus:border-indigo-500 outline-none" />
+            <input type="number" step="any" placeholder="Selling Price (बिक्री) *" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white font-semibold focus:border-indigo-500 outline-none" />
+            <input type="text" placeholder="HSN Code" value={hsnCode} onChange={(e) => setHsnCode(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white font-semibold focus:border-indigo-500 outline-none" />
+            <input type="text" placeholder="Barcode (Scan here)" value={barcode} onChange={(e) => setBarcode(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white font-semibold focus:border-indigo-500 outline-none" />
             
-            {/* सबको दिखने वाले कॉमन इनपुट्स */}
-            <input type="text" placeholder="Product Name *" value={name} onChange={(e) => setName(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white" />
-            <input type="text" placeholder="Brand / Company" value={brand} onChange={(e) => setBrand(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white" />
-            <input type="text" placeholder="Category" value={category} onChange={(e) => setCategory(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white" />
-            <input type="number" placeholder="Purchase Price (खरीद) *" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white" />
-            <input type="number" placeholder="Selling Price (बिक्री) *" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white" />
-            <input type="text" placeholder="HSN Code" value={hsnCode} onChange={(e) => setHsnCode(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white" />
-            <input type="text" placeholder="Barcode (Scan here)" value={barcode} onChange={(e) => setBarcode(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white" />
-            
-            <select value={gstPercentage} onChange={(e) => setGstPercentage(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white">
+            <select value={gstPercentage} onChange={(e) => setGstPercentage(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white font-bold outline-none">
               <option value="0">GST @ 0%</option>
               <option value="5">GST @ 5%</option>
               <option value="12">GST @ 12%</option>
@@ -219,20 +230,19 @@ function Products() {
               <option value="28">GST @ 28%</option>
             </select>
 
-            {/* 🔴 CONDITION 1: ELECTRONICS (IMEI, Model, Warranty) */}
+            {/* Conditional Business Scope Rendering */}
             {businessType === "Electronics" && (
               <>
-                <input type="text" placeholder="IMEI / Serial Number" value={imeiOrSerial} onChange={(e) => setImeiOrSerial(e.target.value)} className="p-3 border rounded-xl bg-blue-50/50 dark:bg-slate-800 border-blue-300 dark:text-white" />
-                <input type="text" placeholder="Model Number" value={modelNumber} onChange={(e) => setModelNumber(e.target.value)} className="p-3 border rounded-xl bg-blue-50/50 dark:bg-slate-800 border-blue-300 dark:text-white" />
-                <input type="number" placeholder="Warranty (In Months)" value={warrantyMonths} onChange={(e) => setWarrantyMonths(e.target.value)} className="p-3 border rounded-xl bg-blue-50/50 dark:bg-slate-800 border-blue-300 dark:text-white" />
+                <input type="text" placeholder="IMEI / Serial Number" value={imeiOrSerial} onChange={(e) => setImeiOrSerial(e.target.value)} className="p-3 border rounded-xl bg-blue-50/40 dark:bg-slate-800 border-blue-200 dark:text-white font-semibold outline-none" />
+                <input type="text" placeholder="Model Number" value={modelNumber} onChange={(e) => setModelNumber(e.target.value)} className="p-3 border rounded-xl bg-blue-50/40 dark:bg-slate-800 border-blue-200 dark:text-white font-semibold outline-none" />
+                <input type="number" placeholder="Warranty (Months)" value={warrantyMonths} onChange={(e) => setWarrantyMonths(e.target.value)} className="p-3 border rounded-xl bg-blue-50/40 dark:bg-slate-800 border-blue-200 dark:text-white font-semibold outline-none" />
               </>
             )}
 
-            {/* 🟢 CONDITION 2: GROCERY & PHARMACY (Quantity, Batch, Expiry) */}
             {(businessType === "Grocery" || businessType === "Pharmacy") && (
               <>
-                <input type="number" placeholder="Total Quantity" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} className="p-3 border rounded-xl bg-green-50/50 dark:bg-slate-800 border-green-300 dark:text-white" />
-                <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="p-3 border rounded-xl bg-green-50/50 dark:bg-slate-800 border-green-300 dark:text-white">
+                <input type="number" placeholder="Total Quantity" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} className="p-3 border rounded-xl bg-emerald-50/40 dark:bg-slate-800 border-emerald-200 dark:text-white font-semibold outline-none" />
+                <select value={unitType} onChange={(e) => setUnitType(e.target.value)} className="p-3 border rounded-xl bg-emerald-50/40 dark:bg-slate-800 border-emerald-200 dark:text-white font-bold outline-none">
                   <option value="Pcs">Pieces (Pcs)</option>
                   <option value="Kg">Kilogram (Kg)</option>
                   <option value="Gm">Gram (Gm)</option>
@@ -244,70 +254,94 @@ function Products() {
 
             {businessType === "Pharmacy" && (
               <>
-                <input type="text" placeholder="Batch Number" value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} className="p-3 border rounded-xl bg-emerald-50/50 dark:bg-slate-800 border-emerald-300 dark:text-white" />
-                <input type="date" placeholder="Expiry Date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="p-3 border rounded-xl bg-emerald-50/50 dark:bg-slate-800 border-emerald-300 text-gray-600 dark:text-white" />
+                <input type="text" placeholder="Batch Number" value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)} className="p-3 border rounded-xl bg-teal-50/40 dark:bg-slate-800 border-teal-200 dark:text-white font-semibold outline-none" />
+                <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} className="p-3 border rounded-xl bg-teal-50/40 dark:bg-slate-800 border-teal-200 text-gray-500 dark:text-white font-semibold outline-none" />
               </>
             )}
 
-            {/* 🔵 CONDITION 3: GARMENTS (Size, Color, Quantity) */}
             {businessType === "Garments" && (
               <>
-                <input type="text" placeholder="Size (e.g. M, XL, 32)" value={size} onChange={(e) => setSize(e.target.value)} className="p-3 border rounded-xl bg-purple-50/50 dark:bg-slate-800 border-purple-300 dark:text-white" />
-                <input type="text" placeholder="Color" value={color} onChange={(e) => setColor(e.target.value)} className="p-3 border rounded-xl bg-purple-50/50 dark:bg-slate-800 border-purple-300 dark:text-white" />
-                <input type="number" placeholder="Total Quantity" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} className="p-3 border rounded-xl bg-purple-50/50 dark:bg-slate-800 border-purple-300 dark:text-white" />
+                <input type="text" placeholder="Size (e.g. M, XL, 32)" value={size} onChange={(e) => setSize(e.target.value)} className="p-3 border rounded-xl bg-purple-50/40 dark:bg-slate-800 border-purple-200 dark:text-white font-semibold outline-none" />
+                <input type="text" placeholder="Color" value={color} onChange={(e) => setColor(e.target.value)} className="p-3 border rounded-xl bg-purple-50/40 dark:bg-slate-800 border-purple-200 dark:text-white font-semibold outline-none" />
+                <input type="number" placeholder="Total Quantity" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} className="p-3 border rounded-xl bg-purple-50/40 dark:bg-slate-800 border-purple-200 dark:text-white font-semibold outline-none" />
               </>
             )}
 
-            {/* GENERAL MODE QUANTITY BOX */}
             {businessType === "General" && (
-              <input type="number" placeholder="Total Quantity" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white" />
+              <input type="number" placeholder="Total Quantity" value={totalQuantity} onChange={(e) => setTotalQuantity(e.target.value)} className="p-3 border rounded-xl dark:bg-slate-800 dark:text-white font-semibold focus:border-indigo-500 outline-none" />
             )}
-
           </div>
 
-          <button type="submit" className="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 shadow-md hover:scale-[1.01] transition-all">
-            {editingId ? "Update Product Parameters" : "Save Product to Inventory"}
+          <button type="submit" className="w-full py-3.5 rounded-xl font-extrabold text-white bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg hover:opacity-95 transition-all text-xs uppercase tracking-wider">
+            {editingId ? "⚡ Overwrite Cloud Parameters" : "💾 Commit Parameters to Cloud Ledger"}
           </button>
         </form>
       </div>
 
-      {/* SEARCH AND TABLE AREA */}
-      <div className="bg-white dark:bg-slate-900 rounded-[24px] shadow-xl p-5">
-        <div className="flex items-center gap-3 border p-3 rounded-xl mb-4">
-          <FiSearch className="text-gray-400" />
-          <input type="text" placeholder="Search live inventory..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-transparent outline-none dark:text-white" />
+      {/* SEARCH AND GRID DATA TABLE */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl p-5 border border-gray-100 dark:border-slate-800">
+        <div className="flex items-center gap-3 border dark:border-slate-800 p-3.5 rounded-2xl mb-4 bg-slate-50/50 dark:bg-slate-950/20">
+          <FiSearch className="text-gray-400 text-lg" />
+          <input 
+            type="text" 
+            placeholder="Search live warehouse records by Name, Brand, HSN or Category..." 
+            value={search} 
+            onChange={(e) => setSearch(e.target.value)} 
+            className="w-full bg-transparent outline-none dark:text-white font-bold text-sm placeholder-gray-400" 
+          />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        {/* HIGH DENSITY SCROLLABLE TABLE */}
+        <div className="overflow-x-auto rounded-2xl border border-gray-50 dark:border-slate-800 max-h-[500px] overflow-y-auto scrollbar-thin">
+          <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800 text-gray-700 dark:text-white border-b">
-                <th className="p-4">Product Details</th>
-                <th className="p-4">Business Mode</th>
+              <tr className="bg-slate-50 dark:bg-slate-950/60 text-gray-400 font-bold uppercase sticky top-0 z-10 border-b dark:border-slate-800 tracking-wider">
+                <th className="p-4">Product Specs Details</th>
+                <th className="p-4">Business Core</th>
                 <th className="p-4">Category</th>
-                <th className="p-4">S.Price (GST)</th>
-                <th className="p-4">Available Stock</th>
+                <th className="p-4">Rate (Purchase/Sell)</th>
+                <th className="p-4">Live Warehouse Stock</th>
                 <th className="p-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {filteredProducts.map((p) => (
-                <tr key={p._id} className="border-b dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                  <td className="p-4 font-bold dark:text-white">
-                    {p.name} <span className="text-xs font-normal text-gray-400">({p.brand})</span>
-                  </td>
-                  <td className="p-4"><span className="px-2 py-1 bg-indigo-50 text-indigo-600 dark:bg-slate-800 text-xs font-bold rounded-md">{p.businessType}</span></td>
-                  <td className="p-4 dark:text-white">{p.category}</td>
-                  <td className="p-4 font-bold text-emerald-600">₹{p.sellingPrice} <span className="text-xs font-normal text-gray-400">({p.gstPercentage}%)</span></td>
-                  <td className="p-4 font-semibold dark:text-white">{p.totalQuantity} {p.unitType || 'Pcs'}</td>
-                  <td className="p-4">
-                    <div className="flex justify-center gap-2">
-                      <button onClick={() => editProduct(p)} className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><FiEdit /></button>
-                      <button onClick={() => deleteProduct(p._id)} className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"><FiTrash2 /></button>
-                    </div>
-                  </td>
+            <tbody className="font-semibold divide-y divide-gray-50 dark:divide-slate-800/60">
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="text-center p-10 font-bold text-gray-400 animate-pulse text-sm">Syncing Live Cloud Records...</td>
                 </tr>
-              ))}
+              ) : filteredProducts.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="text-center p-10 font-bold text-gray-400 text-sm">No Inventory Matches Active Filters</td>
+                </tr>
+              ) : (
+                filteredProducts.map((p) => (
+                  <tr key={p._id} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
+                    <td className="p-4">
+                      <p className="font-black text-sm text-gray-800 dark:text-gray-100 uppercase tracking-tight">{p.name}</p>
+                      <p className="text-gray-400 font-bold mt-0.5 text-[10px]">Brand: <span className="text-indigo-500">{p.brand}</span> | Barcode: {p.barcode || "N/A"}</p>
+                    </td>
+                    <td className="p-4">
+                      <span className="px-2 py-1 bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400 text-[10px] font-black rounded-md border border-indigo-100 dark:border-indigo-900/30">
+                        {p.businessType}
+                      </span>
+                    </td>
+                    <td className="p-4 dark:text-gray-300 font-bold text-gray-600 uppercase text-[11px]">{p.category}</td>
+                    <td className="p-4">
+                      <p className="text-gray-400 font-bold text-[10px]">Buy: ₹{p.purchasePrice?.toFixed(2)}</p>
+                      <p className="font-black text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">Sell: ₹{p.sellingPrice?.toFixed(2)} <span className="text-[10px] font-bold text-gray-400">({p.gstPercentage}% GST)</span></p>
+                    </td>
+                    <td className="p-4">
+                      <p className="font-black text-sm text-slate-700 dark:text-white">{p.totalQuantity} <span className="text-xs text-gray-400 font-bold">{p.unitType || 'Pcs'}</span></p>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex justify-center gap-1.5">
+                        <button onClick={() => editProduct(p)} className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white rounded-xl transition-all border dark:border-slate-700"><FiEdit /></button>
+                        <button onClick={() => deleteProduct(p._id)} className="p-2 bg-red-50 hover:bg-red-100 text-red-500 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-all border dark:border-slate-700"><FiTrash2 /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

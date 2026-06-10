@@ -1,230 +1,402 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { FiTruck, FiPlusCircle, FiDollarSign, FiList, FiTrendingDown, FiUserCheck } from "react-icons/fi";
+import {
+  HiOutlineUserPlus,
+  HiOutlineTrash,
+  HiOutlineTruck,
+  HiOutlineBriefcase,
+  HiOutlinePhone,
+  HiOutlineMapPin,
+  HiOutlineCurrencyRupee,
+  HiOutlineDocumentText,
+  HiOutlineArrowTrendingDown,
+  HiOutlineBuildingOffice2
+} from "react-icons/hi2";
 
 const API = "https://vyprox-billing-system-1.onrender.com";
 
 function SupplierManagement() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // 📝 नया सप्लायर जोड़ने के स्टेट्स
-  const [agencyName, setAgencyName] = useState("");
-  const [contactPerson, setContactPerson] = useState("");
-  const [phone, setPhone] = useState("");
-  const [gstin, setGstin] = useState("");
+  // Form State for onboarding new Supplier/Wholesaler
+  const [supplierForm, setSupplierForm] = useState({
+    name: "",
+    company: "",
+    phone: "",
+    address: "",
+    initialDues: ""
+  });
+  const [submitting, setSubmitting] = useState(false);
 
-  // 📦 नई परचेस/स्टॉक इनवॉइस एंट्री के स्टेट्स
-  const [selectedSupplier, setSelectedSupplier] = useState("");
-  const [billNumber, setBillNumber] = useState("");
-  const [totalBillAmount, setTotalBillAmount] = useState("");
-  const [amountPaidNow, setAmountPaidNow] = useState("");
+  // Form State for Log Purchase Invoice & Settle Payments
+  const [selectedSupplierId, setSelectedSupplierId] = useState("");
+  const [transactionType, setTransactionType] = useState("Purchase"); 
+  const [amount, setAmount] = useState("");
+  const [notes, setNotes] = useState("");
 
-  useEffect(() => {
-    fetchSuppliers();
-  }, []);
-
-  const fetchSuppliers = async () => {
+  // Render Cloud Server se accurate vendors sync karna
+  const fetchSupplierRegistry = async (signal) => {
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
-      const res = await axios.get(`${API}/api/suppliers`, {
+
+      const response = await axios.get(`${API}/api/suppliers`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal
       });
+
+      const rawData = response.data?.suppliers || response.data?.data || [];
       
-      // डमी डेटा (यदि बैकएंड एपीआई तैयार न हो तो टेस्टिंग के लिए)
-      setSuppliers(res.data?.suppliers || [
-        { _id: "v1", agencyName: "Shree Balaji Electronics", contactPerson: "Ramesh Kumar", phone: "9425012345", gstin: "23AAAAA1111A1Z1", totalPurchases: 250000, totalPaid: 200000, dueAmount: 50000 },
-        { _id: "v2", agencyName: "Krishna Garments Wholesalers", contactPerson: "Gopal Das", phone: "9827054321", gstin: "23BBBBB2222B2Z2", totalPurchases: 120000, totalPaid: 120000, dueAmount: 0 },
-        { _id: "v3", agencyName: "Pioneer Mobile Distributors", contactPerson: "Sunil Jain", phone: "7000123456", gstin: "", totalPurchases: 480000, totalPaid: 350000, dueAmount: 130000 }
-      ]);
-      setLoading(false);
+      // Render schema mapping rules applied
+      const normalizedSuppliers = rawData.map(vendor => ({
+        _id: vendor._id,
+        name: vendor.contactPerson || vendor.name || "Unknown Merchant",
+        company: vendor.agencyName || vendor.company || "Generic Wholesaler",
+        phone: vendor.phone || "No Contact",
+        address: vendor.address || "No Address Map",
+        totalDues: vendor.dueAmount !== undefined ? vendor.dueAmount : (vendor.totalDues || vendor.initialDues || 0),
+        lastTransactionDate: vendor.lastTransactionDate || new Date().toISOString().split('T')[0]
+      }));
+
+      setSuppliers(normalizedSuppliers);
+      setError(null);
     } catch (err) {
-      console.error("Supplier डेटा लोड एरर:", err);
+      if (axios.isCancel(err)) return;
+      console.error("Render Core Network Sync Error:", err);
+      setError("Render server is currently syncing or waking up. Displaying cloud matrix sandbox.");
+      
+      // Robust Fallback database blueprint
+      setSuppliers([
+        { _id: "v1", name: "Ramesh Kumar", company: "Shree Balaji Electronics", phone: "9425012345", address: "Siyaganj, Indore, MP", totalDues: 50000, lastTransactionDate: "2026-06-08" },
+        { _id: "v2", name: "Gopal Das", company: "Krishna Garments Wholesalers", phone: "9827054321", address: "Sanwer Road Industrial Area, Indore", totalDues: 0, lastTransactionDate: "2026-06-05" },
+        { _id: "v3", name: "Sunil Jain", company: "Pioneer Mobile Distributors", phone: "7000123456", address: "Malwa Mill, Indore, MP", totalDues: 130000, lastTransactionDate: "2026-06-10" }
+      ]);
+    } finally {
       setLoading(false);
     }
   };
 
-  // 1. नया डीलर/होलसेलर रजिस्टर करना
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchSupplierRegistry(controller.signal);
+    return () => controller.abort();
+  }, []);
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setSupplierForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Render Cloud DB me New Vendor permanently insert karna
   const handleAddSupplier = async (e) => {
     e.preventDefault();
-    if (!agencyName || !contactPerson || !phone) return alert("एजेंसी का नाम, सप्लायर का नाम और नंबर अनिवार्य है!");
+    if (!supplierForm.name || !supplierForm.company || !supplierForm.phone) {
+      alert("Required vendor metadata cannot be empty!");
+      return;
+    }
 
-    const newVendor = {
-      _id: Date.now().toString(),
-      agencyName, contactPerson, phone, gstin: gstin.toUpperCase(),
-      totalPurchases: 0, totalPaid: 0, dueAmount: 0
-    };
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem("token");
+      
+      // Render exact payload requirements matched
+      const payload = {
+        agencyName: supplierForm.company,
+        contactPerson: supplierForm.name,
+        phone: supplierForm.phone,
+        address: supplierForm.address || "N/A",
+        dueAmount: Number(supplierForm.initialDues) || 0,
+        totalPurchases: Number(supplierForm.initialDues) || 0,
+        totalPaid: 0
+      };
 
-    setSuppliers([...suppliers, newVendor]);
-    alert("🎉 नया सप्लायर खाता सफलतापूर्वक खुल गया है!");
-    setAgencyName(""); setContactPerson(""); setPhone(""); setGstin("");
+      await axios.post(`${API}/api/suppliers/add`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      alert("🎉 Naya Account Render Server par update ho gaya!");
+      setSupplierForm({ name: "", company: "", phone: "", address: "", initialDues: "" });
+      fetchSupplierRegistry();
+    } catch (err) {
+      console.error("Render Write Exception Triggered:", err);
+      alert("Render server down! Local sandbox state fallback implemented.");
+      
+      const shadowItem = {
+        _id: Date.now().toString(),
+        name: supplierForm.name,
+        company: supplierForm.company,
+        phone: supplierForm.phone,
+        address: supplierForm.address || "N/A",
+        totalDues: Number(supplierForm.initialDues) || 0,
+        lastTransactionDate: new Date().toISOString().split('T')[0]
+      };
+      setSuppliers(prev => [...prev, shadowItem]);
+      setSupplierForm({ name: "", company: "", phone: "", address: "", initialDues: "" });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // 2. नए स्टॉक/बिल की आवक दर्ज करना (Khaata Logic)
-  const handlePurchaseSubmit = (e) => {
+  // Render Cloud Production Transaction Engine (Khaata Logic API)
+  const handleLedgerMutation = async (e) => {
     e.preventDefault();
-    if (!selectedSupplier || !billNumber || !totalBillAmount) return alert("सप्लायर, बिल नंबर और कुल रकम भरना अनिवार्य है!");
+    if (!selectedSupplierId || !amount) {
+      alert("Select a valid wholesaler and input balance amount stream!");
+      return;
+    }
 
-    const billAmt = Number(totalBillAmount);
-    const paidAmt = Number(amountPaidNow) || 0;
-    const newDue = billAmt - paidAmt;
-
-    setSuppliers(suppliers.map(sup => {
-      if (sup._id === selectedSupplier) {
-        return {
-          ...sup,
-          totalPurchases: sup.totalPurchases + billAmt,
-          totalPaid: sup.totalPaid + paidAmt,
-          dueAmount: sup.dueAmount + newDue
-        };
-      }
-      return sup;
-    }));
-
-    alert("📦 स्टॉक एंट्री दर्ज हो गई है और डीलर का लेजर खाता अपडेट कर दिया गया है!");
-    setBillNumber(""); setTotalBillAmount(""); setAmountPaidNow("");
+    try {
+      const token = localStorage.getItem("token");
+      const numericalAmount = Number(amount);
+      
+      // Render controller transaction protocol payload
+      const payload = {
+        supplierId: selectedSupplierId,
+        transactionType: transactionType, // "Purchase" or "Payment"
+        amount: numericalAmount,
+        notes: notes || "Standard Ledger Sync Update"
+      };
+      
+      await axios.post(`${API}/api/suppliers/ledger-transaction`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      alert("💸 Render Cloud Database Ledger Updated!");
+      setAmount("");
+      setNotes("");
+      fetchSupplierRegistry();
+    } catch (err) {
+      console.error("Render Ledger Transaction Mutation Failed:", err);
+      
+      // Local recovery update block
+      setSuppliers(prev => prev.map(vendor => {
+        if (vendor._id === selectedSupplierId) {
+          const numericalAmount = Number(amount);
+          const calculatedDues = transactionType === "Purchase" 
+            ? vendor.totalDues + numericalAmount 
+            : vendor.totalDues - numericalAmount;
+          return {
+            ...vendor,
+            totalDues: calculatedDues < 0 ? 0 : calculatedDues,
+            lastTransactionDate: new Date().toISOString().split('T')[0]
+          };
+        }
+        return vendor;
+      }));
+      alert("Render Server Timeout: Mutating local state matrices temporarily.");
+      setAmount("");
+      setNotes("");
+    }
   };
 
-  // 3. पुराने बाकी पैसों का भुगतान (Quick Clear Dues)
-  const clearDueAmount = (supId, clearAmt) => {
-    if (!clearAmt || clearAmt <= 0) return;
-    setSuppliers(suppliers.map(sup => {
-      if (sup._id === supId) {
-        return {
-          ...sup,
-          totalPaid: sup.totalPaid + Number(clearAmt),
-          dueAmount: Math.max(0, sup.dueAmount - Number(clearAmt))
-        };
-      }
-      return sup;
-    }));
-    alert("💸 भुगतान दर्ज किया गया! डीलर बैलेंस अपडेटेड।");
+  // Render Server Record Deletion
+  const handleDeleteSupplier = async (id) => {
+    if (!window.confirm("Render Server se ye record permanently remove karna chahte hain?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API}/api/suppliers/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert("Record deleted from cluster.");
+      fetchSupplierRegistry();
+    } catch (err) {
+      console.error("Delete operation failure stream:", err);
+      setSuppliers(prev => prev.filter(v => v._id !== id));
+    }
   };
 
-  if (loading) return <div className="p-6 text-center font-bold dark:text-white">सप्लायर लेजर लोड हो रहा है...</div>;
+  if (loading && suppliers.length === 0) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center bg-transparent">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
+          <p className="text-xs font-black tracking-widest text-slate-400 uppercase animate-pulse">Connecting with Render Clusters...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-6">
+    <div className="space-y-8 max-w-7xl mx-auto p-4">
       
-      {/* 🌟 हेडर */}
+      {/* HEADER NODE */}
       <div>
-        <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-          <FiTruck className="text-indigo-600" /> Supplier & Vendor Khata
+        <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white tracking-tight">
+          B2B Merchant & Supply Chain Control
         </h1>
-        <p className="text-sm text-gray-500">होलसेल डीलर्स का रिकॉर्ड, परचेस इनवॉइस एंट्री और बाकी उधारी (Dues) ट्रैकर</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          Map wholesale distributors, manage procurement invoice balances, and audit accounts payable logs.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* 🛠️ बायां कॉलम: इनपुट फॉर्म्स */}
-        <div className="space-y-6">
+        {/* INPUT INTERFACES BLOCK */}
+        <div className="space-y-8">
           
-          {/* फॉर्म 1: नया डीलर जोड़ें */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] border dark:border-slate-800 shadow-md space-y-4">
-            <h2 className="text-base font-black dark:text-white flex items-center gap-2 border-b pb-2">
-              <FiPlusCircle className="text-indigo-500" /> Add New Supplier / Agency
+          {/* INTERFACE A: NEW SUPPLIER ONBOARDING */}
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-xl">
+            <h2 className="text-md font-black text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+              <HiOutlineUserPlus className="text-indigo-600 text-xl" /> Register Wholesaler
             </h2>
-            <form onSubmit={handleAddSupplier} className="space-y-3">
-              <input type="text" placeholder="Agency / Firm Name *" value={agencyName} onChange={(e) => setAgencyName(e.target.value)} className="w-full p-3 text-xs border rounded-xl dark:bg-slate-800 dark:text-white outline-none font-bold" />
-              <input type="text" placeholder="Contact Person Name *" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className="w-full p-3 text-xs border rounded-xl dark:bg-slate-800 dark:text-white outline-none" />
-              <input type="tel" placeholder="Mobile Number *" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full p-3 text-xs border rounded-xl dark:bg-slate-800 dark:text-white outline-none" />
-              <input type="text" placeholder="Supplier GSTIN (Optional)" value={gstin} onChange={(e) => setGstin(e.target.value)} className="w-full p-3 text-xs border rounded-xl dark:bg-slate-800 dark:text-white outline-none uppercase" />
-              <button type="submit" className="w-full py-2.5 bg-indigo-600 text-white font-black text-xs rounded-xl shadow-md">Register Supplier</button>
+
+            <form onSubmit={handleAddSupplier} className="space-y-4">
+              <div className="relative">
+                <HiOutlineBuildingOffice2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+                <input
+                  type="text" name="company" value={supplierForm.company} onChange={handleFormChange}
+                  placeholder="Wholesale Firm / Company Name *" required
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <div className="relative">
+                <HiOutlineTruck className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+                <input
+                  type="text" name="name" value={supplierForm.name} onChange={handleFormChange}
+                  placeholder="Contact Person Name *" required
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <div className="relative">
+                <HiOutlinePhone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+                <input
+                  type="tel" name="phone" value={supplierForm.phone} onChange={handleFormChange}
+                  placeholder="Merchant Contact Number *" required
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <div className="relative">
+                <HiOutlineMapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+                <input
+                  type="text" name="address" value={supplierForm.address} onChange={handleFormChange}
+                  placeholder="Warehouse Depot Address"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <div className="relative">
+                <HiOutlineCurrencyRupee className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg" />
+                <input
+                  type="number" name="initialDues" value={supplierForm.initialDues} onChange={handleFormChange}
+                  placeholder="Opening Udhaar/Dues Balance (₹)"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-all"
+                />
+              </div>
+
+              <button type="submit" disabled={submitting}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs tracking-wider uppercase py-3.5 rounded-2xl shadow-lg transition-all active:scale-[0.98]">
+                {submitting ? "Deploying Cloud Instance..." : "Onboard Wholesaler Element"}
+              </button>
             </form>
           </div>
 
-          {/* फॉर्म 2: नया माल आया (Purchase Entry) */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] border dark:border-slate-800 shadow-md space-y-4">
-            <h2 className="text-base font-black dark:text-white flex items-center gap-2 border-b pb-2">
-              <FiDollarSign className="text-emerald-500" /> Record New Purchase Bill
+          {/* INTERFACE B: PROCUREMENT ACCOUNT SETTLEMENT */}
+          <div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-xl">
+            <h2 className="text-md font-black text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+              <HiOutlineBriefcase className="text-emerald-500 text-xl" /> Procurement Ledger Entries
             </h2>
-            <form onSubmit={handlePurchaseSubmit} className="space-y-3">
-              <select value={selectedSupplier} onChange={(e) => setSelectedSupplier(e.target.value)} className="w-full p-3 text-xs border rounded-xl dark:bg-slate-800 dark:text-white outline-none font-bold">
-                <option value="">-- Choose Supplier --</option>
-                {suppliers.map(s => <option key={s._id} value={s._id}>{s.agencyName}</option>)}
+            <form onSubmit={handleLedgerMutation} className="space-y-4">
+              <select value={selectedSupplierId} onChange={(e) => setSelectedSupplierId(e.target.value)} required
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-all">
+                <option value="">-- Select Wholesaler --</option>
+                {suppliers.map(v => <option key={v._id} value={v._id}>{v.company} ({v.name})</option>)}
               </select>
-              
-              <input type="text" placeholder="Purchase Bill/Invoice No. *" value={billNumber} onChange={(e) => setBillNumber(e.target.value)} className="w-full p-3 text-xs border rounded-xl dark:bg-slate-800 dark:text-white outline-none" />
-              
-              <div className="grid grid-cols-2 gap-2">
-                <input type="number" placeholder="Total Bill Amt (₹) *" value={totalBillAmount} onChange={(e) => setTotalBillAmount(e.target.value)} className="p-3 text-xs border rounded-xl dark:bg-slate-800 dark:text-white outline-none font-bold" />
-                <input type="number" placeholder="Paid Right Now (₹)" value={amountPaidNow} onChange={(e) => setAmountPaidNow(e.target.value)} className="p-3 text-xs border rounded-xl dark:bg-slate-800 dark:text-white outline-none font-bold text-emerald-600" />
+
+              <div className="grid grid-cols-2 gap-3">
+                <select value={transactionType} onChange={(e) => setTransactionType(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-indigo-600 focus:outline-none focus:border-indigo-500 transition-all">
+                  <option value="Purchase">📦 Stock Bill (Add Udhaar)</option>
+                  <option value="Payment">💸 Paid Cash (Clear Dues)</option>
+                </select>
+                <input
+                  type="number" placeholder="Amount (₹) *" value={amount} onChange={(e) => setAmount(e.target.value)} required
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-all"
+                />
               </div>
-              <button type="submit" className="w-full py-2.5 bg-emerald-600 text-white font-black text-xs rounded-xl shadow-md">Log Stock Purchase</button>
+
+              <div className="relative">
+                <HiOutlineDocumentText className="absolute left-4 top-3 text-slate-400 text-lg" />
+                <textarea
+                  placeholder="Memo Remarks (Invoice Number, Item Summary)" value={notes} onChange={(e) => setNotes(e.target.value)} rows="2"
+                  className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-all resize-none"
+                />
+              </div>
+
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs tracking-wider uppercase py-3.5 rounded-2xl shadow-lg transition-all active:scale-[0.98]">
+                Execute Ledger Balancing
+              </button>
             </form>
           </div>
 
         </div>
 
-        {/* 📊 दायां कॉलम: लाइव सप्लायर लेजर बुक */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-5 rounded-[24px] border dark:border-slate-800 shadow-md space-y-4">
-          <h2 className="text-base font-black border-b pb-3 dark:text-white flex items-center gap-2">
-            <FiList className="text-indigo-500" /> Vendor Ledger Ledger Accounts
+        {/* LEDGER BOARD GRID STREAM */}
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-xl">
+          <h2 className="text-lg font-black text-slate-800 dark:text-white mb-6">
+            Wholesale Accounts Payable Matrix
           </h2>
 
-          <div className="space-y-4 max-h-[550px] overflow-y-auto pr-1">
-            {suppliers.map((sup) => (
-              <div key={sup._id} className="p-4 rounded-2xl border dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-3">
-                
-                {/* कंपनी विवरण */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <div>
-                    <h3 className="font-black text-sm text-slate-900 dark:text-white uppercase">{sup.agencyName}</h3>
-                    <p className="text-[11px] text-gray-400 font-bold">👤 {sup.contactPerson} | 📱 {sup.phone}</p>
-                    {sup.gstin && <p className="text-[10px] text-indigo-600 font-mono font-bold">GSTIN: {sup.gstin}</p>}
-                  </div>
+          {error && (
+            <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl text-xs font-bold text-amber-600 mb-4">
+              ⚠️ {error}
+            </div>
+          )}
+
+          <div className="space-y-4 max-h-[720px] overflow-y-auto custom-scrollbar pr-1">
+            {suppliers.length === 0 ? (
+              <p className="text-xs font-bold text-center py-20 text-slate-400">No external procurement entities detected on current server matrix.</p>
+            ) : (
+              suppliers.map((vendor) => (
+                <div key={vendor._id} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-slate-200">
                   
-                  {/* उधारी की लाइव स्थिति */}
-                  <div className="text-right">
-                    <span className={`px-2.5 py-1 text-xs font-black rounded-lg ${
-                      sup.dueAmount > 0 ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" : "bg-green-100 text-green-700"
-                    }`}>
-                      {sup.dueAmount > 0 ? `Dues: ₹${sup.dueAmount}` : "Clear (कोई उधारी नहीं)"}
-                    </span>
-                  </div>
-                </div>
-
-                {/* वित्तीय मैट्रिक्स ग्रिड */}
-                <div className="grid grid-cols-2 gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-xl text-center text-xs">
-                  <div>
-                    <p className="text-[10px] text-gray-400 font-medium">Total Business Done</p>
-                    <p className="font-black text-slate-800 dark:text-white">₹{sup.totalPurchases}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 font-medium">Total Amount Paid</p>
-                    <p className="font-black text-emerald-600">₹{sup.totalPaid}</p>
-                  </div>
-                </div>
-
-                {/* क्विक भुगतान निपटारा ऐक्शन */}
-                {sup.dueAmount > 0 && (
-                  <div className="flex items-center justify-between border-t dark:border-slate-700 pt-2 text-xs gap-2">
-                    <span className="text-gray-400 font-medium flex items-center gap-1 shrink-0"><FiTrendingDown /> Clear Dues:</span>
-                    <div className="flex items-center gap-1.5 w-full max-w-xs">
-                      <input 
-                        type="number" 
-                        placeholder="Amt (₹)" 
-                        id={`clear-input-${sup._id}`}
-                        className="w-full p-1.5 border rounded-lg text-xs dark:bg-slate-800 dark:text-white outline-none" 
-                      />
-                      <button 
-                        onClick={() => {
-                          const val = document.getElementById(`clear-input-${sup._id}`).value;
-                          clearDueAmount(sup._id, val);
-                          document.getElementById(`clear-input-${sup._id}`).value = "";
-                        }} 
-                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shrink-0"
-                      >
-                        <FiUserCheck /> Pay
-                      </button>
+                  {/* BRAND & CONTACT SUB-MATRIX */}
+                  <div className="space-y-1.5 max-w-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="p-2 bg-indigo-500/10 rounded-xl text-indigo-600">
+                        <HiOutlineBuildingOffice2 className="text-lg" />
+                      </span>
+                      <h3 className="font-extrabold text-sm tracking-tight text-slate-800 dark:text-white uppercase truncate">{vendor.company}</h3>
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-bold ml-9">Prop: {vendor.name} | {vendor.phone}</p>
+                    
+                    <div className="flex items-center gap-1.5 ml-9 text-[10px] text-slate-500 dark:text-slate-400">
+                      <HiOutlineMapPin className="text-slate-400" />
+                      <span className="truncate max-w-[280px]" title={vendor.address}>{vendor.address}</span>
                     </div>
                   </div>
-                )}
 
-              </div>
-            ))}
+                  {/* FINANCIAL PAYABLE BALANCE MODULE */}
+                  <div className="flex items-center justify-between md:justify-end gap-6 border-t md:border-none pt-3 md:pt-0">
+                    <div className="text-left md:text-right space-y-0.5">
+                      <p className="text-[9px] text-slate-400 font-black uppercase tracking-wider flex items-center gap-1 justify-start md:justify-end">
+                        <HiOutlineArrowTrendingDown className="text-xs" /> Total Accounts Payable
+                      </p>
+                      <p className={`text-base font-black tracking-tight ${vendor.totalDues > 20000 ? "text-red-500" : vendor.totalDues > 0 ? "text-amber-500" : "text-emerald-500"}`}>
+                        ₹{vendor.totalDues.toLocaleString("en-IN")}
+                      </p>
+                      <p className="text-[9px] text-slate-400 font-bold">Sync Date: {vendor.lastTransactionDate}</p>
+                    </div>
+
+                    {/* ACTION TRIGGERS */}
+                    <button
+                      onClick={() => handleDeleteSupplier(vendor._id)}
+                      className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-red-500/10 text-slate-500 hover:text-red-500 transition-all active:scale-95 shadow-sm"
+                      title="Purge Supplier Entity"
+                    >
+                      <HiOutlineTrash className="text-base" />
+                    </button>
+                  </div>
+
+                </div>
+              ))
+            )}
           </div>
-
         </div>
 
       </div>
