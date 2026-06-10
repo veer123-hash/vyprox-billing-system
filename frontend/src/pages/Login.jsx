@@ -17,11 +17,13 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // ⚡ परमानेंट लॉगिन चेक: अगर टोकन पहले से है, तो सीधे डैशबोर्ड भेजें
+  // ⚡ [FIXED LOOPER] परमानेंट लॉगिन चेक: Loop-breaker condition ke saath
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      navigate("/dashboard"); // Sync kiya register component ke dashboard route se
+    
+    // Sirf tabhi navigate karega jab token ho AUR hum pehle se dashboard par na ho
+    if (token && window.location.pathname === "/login") {
+      navigate("/dashboard"); 
     }
   }, [navigate]);
 
@@ -44,7 +46,9 @@ function Login() {
       if (res.data?.token) {
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
-        navigate("/dashboard"); // Redirect directly to standard dashboard
+        
+        // Success ke baad direct redirect
+        navigate("/dashboard"); 
       } else {
         setErrorMsg("Token not received from server.");
       }
