@@ -3,7 +3,8 @@ import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiLogIn } from "react-icons/fi";
 
-const API = "https://vyprox-billing-system-1.onrender.com";
+// ⚡ LIVE API ENDPOINT FOR RENDER SERVER
+const API = "https://vyprox-billing-system-1.onrender.com"; 
 
 function Login() {
   const navigate = useNavigate();
@@ -17,13 +18,12 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // ⚡ [FIXED LOOPER] परमानेंट लॉगिन चेक: Loop-breaker condition ke saath
+  // ⚡ [NEW WORKPLACE] Loop breaker strictly mapping to App.jsx routes
   useEffect(() => {
     const token = localStorage.getItem("token");
-    
-    // Sirf tabhi navigate karega jab token ho AUR hum pehle se dashboard par na ho
-    if (token && window.location.pathname === "/login") {
-      navigate("/dashboard"); 
+    // Kyunki App.jsx mein login ka path "/" hai, isliye "/" check karenge
+    if (token && window.location.pathname === "/") {
+      navigate("/app/dashboard"); // Sahi Dashboard path par bhejenge
     }
   }, [navigate]);
 
@@ -40,22 +40,26 @@ function Login() {
 
     try {
       setLoading(true);
-
-      const res = await axios.post(`${API}/api/auth/login`, form);
+      const res = await axios.post(`${API}/api/auth/login`, form, {
+        headers: { "Content-Type": "application/json" }
+      });
 
       if (res.data?.token) {
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
         
-        // Success ke baad direct redirect
-        navigate("/dashboard"); 
+        // ⚡ Login success ke baad sahi route (/app/dashboard) par redirect
+        navigate("/app/dashboard"); 
       } else {
-        setErrorMsg("Token not received from server.");
+        setErrorMsg("Server response structure invalid! Token missing.");
       }
-
     } catch (err) {
       console.error("Login Error:", err);
-      setErrorMsg(err.response?.data?.message || "Invalid Email or Password!");
+      if (!err.response) {
+        setErrorMsg("Live Render server se connect nahi ho paa raha hai! Server ko neend se jagne mein 1 minute lag sakta hai, please thodi der baad dobara click karein.");
+      } else {
+        setErrorMsg(err.response?.data?.message || "Invalid Email or Password!");
+      }
     } finally {
       setLoading(false);
     }
@@ -64,7 +68,7 @@ function Login() {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-black overflow-hidden px-6 py-8">
 
-      {/* GLOW BACKGROUNDS */}
+      {/* GLOW BACKGROUNDS (FROM OLD DESIGN) */}
       <div className="absolute top-[-120px] left-[-120px] w-[350px] h-[350px] bg-pink-500 rounded-full blur-[120px] opacity-30 animate-pulse"></div>
       <div className="absolute bottom-[-120px] right-[-120px] w-[350px] h-[350px] bg-indigo-500 rounded-full blur-[120px] opacity-30 animate-pulse"></div>
       <div className="absolute top-[30%] right-[20%] w-[250px] h-[250px] bg-purple-500 rounded-full blur-[100px] opacity-20"></div>

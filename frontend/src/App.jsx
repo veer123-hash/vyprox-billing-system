@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login";
-import Register from "./pages/Register"; // 👈 1. नया रजिस्टर पेज यहाँ इम्पोर्ट किया
+import Register from "./pages/Register"; 
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import Billing from "./pages/Billing";
@@ -22,7 +22,7 @@ function App() {
       <Routes>
         {/* PUBLIC ROUTES */}
         <Route path="/" element={<Login />} />
-        <Route path="/register" element={<Register />} /> {/* 👈 2. नया रजिस्ट्रेशन राउट यहाँ जोड़ा */}
+        <Route path="/register" element={<Register />} /> 
         <Route path="/forgot-password" element={<ForgetPassword />} />
 
         {/* PROTECTED APP ROUTES */}
@@ -34,10 +34,10 @@ function App() {
             </ProtectedRoute>
           }
         >
-          {/* Default Redirect: /app खोलने पर सीधे /app/dashboard खुलेगा */}
+          {/* Default Redirect: Opening /app automatically routes to /app/dashboard */}
           <Route index element={<Navigate to="dashboard" replace />} />
 
-          {/* ⚡ ध्यान दें: यहाँ से सभी स्लैश (/) हटा दिए हैं ताकि ये /app के सही चाइल्ड राउट्स बनें */}
+          {/* CHILD ROUTES: Explicitly configured as sub-paths under /app */}
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="products" element={<Products />} />
           <Route path="billing" element={<Billing />} />
@@ -49,7 +49,7 @@ function App() {
           <Route path="reports" element={<Reports />} />
         </Route>
 
-        {/* FALLBACK ROUTE: अगर कोई गलत URL डाले तो सीधे लॉगिन पर भेजें */}
+        {/* FALLBACK ROUTE: Redirect any unmapped URLs straight to login root */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
