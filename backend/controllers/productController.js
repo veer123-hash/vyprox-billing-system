@@ -1,40 +1,64 @@
 const Product = require("../models/Product");
 const Bill = require("../models/Bill");
 
-// ================= ADD PRODUCT (FIXED) =================
+// ================= ADD PRODUCT =================
 const addProduct = async (req, res) => {
   try {
-    // 🔵 FIX 1: req.body से 'stock' और 'quantity' दोनों को निकाल लिया ताकि कोई भी फ्रंटएंड कोड काम कर सके
-    const { name, price, quantity, stock, category } = req.body;
+    const {
+      businessType,
+      name,
+      brand,
+      category,
+      purchasePrice,
+      sellingPrice,
+      gstPercentage,
+      totalQuantity,
+      unitType,
+      hsnCode,
+      barcode,
+      modelNumber,
+      warrantyMonths
+    } = req.body;
 
-    // 🔵 FIX 2: वास्तविक स्टॉक वैल्यू को पहचानें (चाहे फ्रंटएंड 'stock' भेजे या 'quantity')
-    const finalStock = stock !== undefined ? stock : quantity;
-
-    // वैलिडेशन चेक
-    if (!name || !price || finalStock === undefined || !category) {
+    if (
+      !name ||
+      !category ||
+      purchasePrice === undefined ||
+      sellingPrice === undefined
+    ) {
       return res.status(400).json({
-        message: "All fields (Name, Price, Quantity/Stock, Category) are required",
+        message:
+          "Name, Category, Purchase Price and Selling Price are required"
       });
     }
 
     const product = new Product({
+      businessType: businessType || "General",
       name,
-      price,
-      stock: finalStock, // मोंगूज मॉडल में हमेशा 'stock' ही जाएगा
+      brand: brand || "Generic",
       category,
+      purchasePrice: Number(purchasePrice),
+      sellingPrice: Number(sellingPrice),
+      gstPercentage: Number(gstPercentage || 0),
+      totalQuantity: Number(totalQuantity || 0),
+      unitType: unitType || "Pcs",
+      hsnCode: hsnCode || "0000",
+      barcode: barcode || "",
+      modelNumber: modelNumber || "",
+      warrantyMonths: Number(warrantyMonths || 0)
     });
 
     await product.save();
 
     res.status(201).json({
-      message: "Product added successfully",
-      product,
+      message: "Product Added Successfully",
+      product
     });
 
   } catch (error) {
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -42,60 +66,61 @@ const addProduct = async (req, res) => {
 // ================= GET PRODUCTS =================
 const getProducts = async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 }); // नए प्रोडक्ट ऊपर दिखेंगे
+    const products = await Product.find().sort({
+      createdAt: -1
+    });
 
-    res.json({
+    res.status(200).json({
       message: "All products fetched",
-      products,
+      products
     });
 
   } catch (error) {
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
 
-// ================= UPDATE PRODUCT (FIXED) =================
+// ================= UPDATE PRODUCT =================
 const updateProduct = async (req, res) => {
   try {
-    const { name, price, quantity, stock, category } = req.body;
-    
-    // अपडेट के समय भी पक्का करें कि स्टॉक की वैल्यू सही मैप हो रही है
-    const finalStock = stock !== undefined ? stock : quantity;
+    const updateData = {};
 
-    const updateData = {
-      name,
-      price,
-      category,
-    };
-    
-    if (finalStock !== undefined) {
-      updateData.stock = finalStock;
-    }
+    Object.keys(req.body).forEach((key) => {
+      if (
+        req.body[key] !== undefined &&
+        req.body[key] !== null
+      ) {
+        updateData[key] = req.body[key];
+      }
+    });
 
     const product = await Product.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true, runValidators: true }
+      {
+        new: true,
+        runValidators: true
+      }
     );
 
     if (!product) {
       return res.status(404).json({
-        message: "Product not found",
+        message: "Product not found"
       });
     }
 
-    res.json({
-      message: "Updated successfully",
-      product,
+    res.status(200).json({
+      message: "Product Updated Successfully",
+      product
     });
 
   } catch (error) {
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -103,22 +128,24 @@ const updateProduct = async (req, res) => {
 // ================= DELETE PRODUCT =================
 const deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findByIdAndDelete(
+      req.params.id
+    );
 
     if (!product) {
       return res.status(404).json({
-        message: "Product not found",
+        message: "Product not found"
       });
     }
 
-    res.json({
-      message: "Deleted successfully",
+    res.status(200).json({
+      message: "Product Deleted Successfully"
     });
 
   } catch (error) {
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -126,71 +153,90 @@ const deleteProduct = async (req, res) => {
 // ================= UPDATE STOCK =================
 const updateStock = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const { totalQuantity } = req.body;
+
+    const product = await Product.findById(
+      req.params.id
+    );
 
     if (!product) {
       return res.status(404).json({
-        message: "Product not found",
+        message: "Product not found"
       });
     }
 
-    product.stock = req.body.stock !== undefined ? req.body.stock : req.body.quantity;
+    product.totalQuantity = Number(totalQuantity);
+
     await product.save();
 
-    res.json({
-      message: "Stock updated",
-      product,
+    res.status(200).json({
+      message: "Stock Updated Successfully",
+      product
     });
 
   } catch (error) {
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
 
-// ================= SEARCH PRODUCTS (FIXED) =================
+// ================= SEARCH PRODUCTS =================
 const searchProducts = async (req, res) => {
   try {
     const { q } = req.query;
 
     const products = await Product.find({
       $or: [
-        { name: { $regex: q || "", $options: "i" } },
-        { category: { $regex: q || "", $options: "i" } },
-      ],
+        {
+          name: {
+            $regex: q || "",
+            $options: "i"
+          }
+        },
+        {
+          category: {
+            $regex: q || "",
+            $options: "i"
+          }
+        },
+        {
+          brand: {
+            $regex: q || "",
+            $options: "i"
+          }
+        }
+      ]
     });
 
-    res.json({
-      message: "Search results",
-      products,
+    res.status(200).json({
+      products
     });
 
   } catch (error) {
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
 
-// ================= LOW STOCK =================
+// ================= LOW STOCK ALERT =================
 const lowStockAlert = async (req, res) => {
   try {
     const products = await Product.find({
-      stock: { $lte: 5 },
+      totalQuantity: { $lte: 5 }
     });
 
-    res.json({
-      message: "Low stock items",
-      products,
+    res.status(200).json({
+      products
     });
 
   } catch (error) {
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -200,65 +246,72 @@ const createBill = async (req, res) => {
   try {
     const {
       customerName,
-      customerPhone,
       items,
       subtotal,
       cgst,
       sgst,
       grandTotal,
-      paymentMode,
+      paymentMode
     } = req.body;
 
     let billItems = [];
 
     for (let item of items) {
-      const product = await Product.findById(item._id);
+
+      const product = await Product.findById(
+        item._id
+      );
 
       if (!product) {
         return res.status(404).json({
-          message: "Product not found",
+          message: "Product not found"
         });
       }
 
-      if (product.stock < item.quantity) {
+      if (
+        product.totalQuantity <
+        item.quantity
+      ) {
         return res.status(400).json({
-          message: `Not enough stock for ${product.name}`,
+          message: `Insufficient stock for ${product.name}`
         });
       }
 
-      product.stock -= item.quantity;
+      product.totalQuantity -= item.quantity;
+
       await product.save();
 
       billItems.push({
         name: product.name,
-        price: product.price,
+        price: product.sellingPrice,
         quantity: item.quantity,
-        total: product.price * item.quantity,
+        total:
+          product.sellingPrice *
+          item.quantity
       });
     }
 
     const bill = new Bill({
       customerName,
-      customerPhone,
       items: billItems,
       subtotal,
       cgst,
       sgst,
       grandTotal,
-      paymentMode,
+      paymentMode
     });
 
     await bill.save();
 
     res.status(201).json({
       message: "Bill Created Successfully",
-      bill,
+      bill
     });
 
   } catch (error) {
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -266,22 +319,22 @@ const createBill = async (req, res) => {
 // ================= GET BILLS =================
 const getBills = async (req, res) => {
   try {
-    const bills = await Bill.find().sort({ createdAt: -1 });
+    const bills = await Bill.find().sort({
+      createdAt: -1
+    });
 
-    res.json({
-      message: "Bills fetched",
-      bills,
+    res.status(200).json({
+      bills
     });
 
   } catch (error) {
     res.status(500).json({
       message: "Server Error",
-      error: error.message,
+      error: error.message
     });
   }
 };
 
-// ================= EXPORT =================
 module.exports = {
   addProduct,
   getProducts,
@@ -291,5 +344,5 @@ module.exports = {
   searchProducts,
   lowStockAlert,
   createBill,
-  getBills,
+  getBills
 };
