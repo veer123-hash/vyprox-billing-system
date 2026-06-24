@@ -42,6 +42,7 @@ const addProduct = async (req, res) => {
     }
 
     const product = new Product({
+      businessId: req.user.id,
       businessType: businessType || "General",
       name,
       brand: brand || "Generic",
@@ -56,6 +57,8 @@ const addProduct = async (req, res) => {
       modelNumber: modelNumber || "",
       warrantyMonths: Number(warrantyMonths || 0)
     });
+
+    console.log("PRODUCT OBJECT =>", product);
 
     await product.save();
 
@@ -79,9 +82,11 @@ const getProducts = async (req, res) => {
     console.log("========== GET PRODUCTS ==========");
     console.log("REQ.USER =>", req.user);
 
-    const products = await Product.find().sort({
-      createdAt: -1
-    });
+    const products = await Product.find({
+  businessId: req.user.id
+}).sort({
+  createdAt: -1
+});
 
     console.log("PRODUCTS FOUND =>", products.length);
 
@@ -91,15 +96,13 @@ const getProducts = async (req, res) => {
     });
 
   } catch (error) {
+  console.log("PRODUCT ADD ERROR =>", error);
 
-    console.log("========== PRODUCTS ERROR ==========");
-    console.log(error);
-
-    res.status(500).json({
-      message: "Server Error",
-      error: error.message
-    });
-  }
+  res.status(500).json({
+    message: "Server Error",
+    error: error.message
+  });
+}
 };
 
 // ================= UPDATE PRODUCT =================
