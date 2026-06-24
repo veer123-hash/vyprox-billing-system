@@ -44,15 +44,42 @@ function Login() {
         headers: { "Content-Type": "application/json" }
       });
 
-      if (res.data?.token) {
-        localStorage.setItem("token", res.data.token);
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-        
-        // ⚡ Login success ke baad sahi route (/app/dashboard) par redirect
-        navigate("/app/dashboard"); 
-      } else {
-        setErrorMsg("Server response structure invalid! Token missing.");
-      }
+     if (res.data?.token) {
+
+  localStorage.setItem(
+    "token",
+    res.data.token
+  );
+
+  localStorage.setItem(
+    "user",
+    JSON.stringify(res.data.user)
+  );
+
+  localStorage.setItem(
+    "role",
+    res.data.user.role
+  );
+
+  console.log(
+    "ROLE:",
+    res.data.user.role
+  );
+
+  console.log(
+    "USER:",
+    res.data.user
+  );
+
+  navigate("/app/dashboard");
+
+} else {
+
+  setErrorMsg(
+    "Server response structure invalid! Token missing."
+  );
+
+}
     } catch (err) {
       console.error("Login Error:", err);
       if (!err.response) {

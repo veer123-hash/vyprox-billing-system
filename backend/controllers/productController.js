@@ -4,6 +4,15 @@ const Bill = require("../models/Bill");
 // ================= ADD PRODUCT =================
 const addProduct = async (req, res) => {
   try {
+
+       
+    console.log("================================");
+    console.log("ADD PRODUCT API HIT");
+    console.log("BODY:", req.body);
+    console.log("USER:", req.user);
+    console.log("================================");
+
+
     const {
       businessType,
       name,

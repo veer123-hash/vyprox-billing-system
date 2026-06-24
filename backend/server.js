@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -9,11 +10,17 @@ const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
 const billRoutes = require("./routes/billRoutes");
+const alertRoutes = require("./routes/alertRoutes");
+
+
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/auth", authRoutes);
+app.use("/api/alerts", alertRoutes);
+
 
 
 // ================= MONGODB CONNECT =================

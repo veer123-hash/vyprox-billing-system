@@ -2,39 +2,85 @@ const express = require("express");
 const router = express.Router();
 
 const authMiddleware = require("../middleware/authMiddleware");
-const adminMiddleware = require("../middleware/adminMiddleware");
+const allowRoles = require("../middleware/roleMiddleware");
 
 const {
-    addProduct,
-    getProducts,
-    updateProduct,
-    deleteProduct,
-    updateStock,
-    searchProducts,
-    lowStockAlert,
-    createBill,
-    getBills
+  addProduct,
+  getProducts,
+  updateProduct,
+  deleteProduct,
+  updateStock,
+  searchProducts,
+  lowStockAlert,
+  createBill,
+  getBills,
 } = require("../controllers/productController");
 
-router.post("/add", authMiddleware, adminMiddleware, addProduct);
+// ================= ADD PRODUCT =================
+router.post(
+  "/add",
+  authMiddleware,
+  allowRoles("admin", "staff", "manager"),
+  addProduct
+);
 
-router.get("/", authMiddleware, getProducts);
+// ================= GET ALL PRODUCTS =================
+router.get(
+  "/",
+  authMiddleware,
+  getProducts
+);
 
-router.put("/update/:id", authMiddleware, adminMiddleware, updateProduct);
+// ================= UPDATE PRODUCT =================
+router.put(
+  "/update/:id",
+  authMiddleware,
+  allowRoles("admin", "staff", "manager"),
+  updateProduct
+);
 
-router.delete("/delete/:id", authMiddleware, adminMiddleware, deleteProduct);
+// ================= DELETE PRODUCT =================
+router.delete(
+  "/delete/:id",
+  authMiddleware,
+  allowRoles("admin"),
+  deleteProduct
+);
 
-router.put("/stock/:id", authMiddleware, adminMiddleware, updateStock);
+// ================= UPDATE STOCK =================
+router.put(
+  "/stock/:id",
+  authMiddleware,
+  allowRoles("admin", "staff", "manager"),
+  updateStock
+);
 
-router.get("/low-stock", authMiddleware, lowStockAlert);
+// ================= LOW STOCK ALERT =================
+router.get(
+  "/low-stock",
+  authMiddleware,
+  lowStockAlert
+);
 
-router.get("/search", authMiddleware, searchProducts);
+// ================= SEARCH PRODUCTS =================
+router.get(
+  "/search",
+  authMiddleware,
+  searchProducts
+);
 
-router.post("/bill", authMiddleware, createBill);
+// ================= CREATE BILL =================
+router.post(
+  "/bill",
+  authMiddleware,
+  createBill
+);
 
-router.get("/bills", authMiddleware, getBills);
-
-console.log("authMiddleware:", authMiddleware);
-console.log("adminMiddleware:", adminMiddleware);
+// ================= BILL HISTORY =================
+router.get(
+  "/bills",
+  authMiddleware,
+  getBills
+);
 
 module.exports = router;

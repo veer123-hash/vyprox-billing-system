@@ -1,0 +1,14 @@
+:root {
+  --bg: #0b1220;
+  --panel: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e6e6e6;
+  --muted: #9aa4b2;
+  --primary: #4f7cff;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui;
+}

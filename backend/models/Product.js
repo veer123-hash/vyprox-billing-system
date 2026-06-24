@@ -2,32 +2,18 @@ const mongoose = require("mongoose");
 
 const InventoryItemSchema = new mongoose.Schema(
   {
-    imeiOrSerial: {
-      type: String,
-      default: "",
-      trim: true,
-    },
+    imeiOrSerial: { type: String, default: "" },
+    batchNumber: { type: String, default: "" },
 
-    batchNumber: {
-      type: String,
-      default: "",
-      trim: true,
-    },
+    expiryDate: { type: Date },
 
-    expiryDate: {
-      type: Date,
-    },
+    size: { type: String, default: "" },
+    color: { type: String, default: "" },
 
-    size: {
+    status: {
       type: String,
-      default: "",
-      trim: true,
-    },
-
-    color: {
-      type: String,
-      default: "",
-      trim: true,
+      enum: ["available", "sold", "damaged", "expired"],
+      default: "available",
     },
   },
   { _id: false }
@@ -35,95 +21,48 @@ const InventoryItemSchema = new mongoose.Schema(
 
 const ProductSchema = new mongoose.Schema(
   {
+    // 🔐 SaaS Isolation
+    businessId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Business",
+      required: true,
+      index: true,
+    },
+
+    // 🧾 BASIC INFO
+    name: { type: String, required: true },
+    brand: { type: String, default: "Generic" },
+    category: { type: String, required: true },
+
     businessType: {
       type: String,
-      enum: [
-        "General",
-        "Electronics",
-        "Grocery",
-        "Pharmacy",
-        "Garments",
-      ],
+      enum: ["General", "Electronics", "Grocery", "Pharmacy", "Garments"],
       default: "General",
-      required: true,
     },
 
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    // 💰 PRICING
+    purchasePrice: { type: Number, required: true },
+    sellingPrice: { type: Number, required: true },
+    gstPercentage: { type: Number, default: 0 },
 
-    brand: {
-      type: String,
-      default: "Generic",
-      trim: true,
-    },
+    // 📦 STOCK MANAGEMENT
+    totalQuantity: { type: Number, default: 0 },
+    minStockAlert: { type: Number, default: 5 },
 
-    category: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    unitType: { type: String, default: "Pcs" },
 
-    purchasePrice: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
+    // 🏷 IDENTIFIERS
+    hsnCode: { type: String, default: "0000" },
+    barcode: { type: String, default: "" },
+    modelNumber: { type: String, default: "" },
 
-    sellingPrice: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
+    // 🛠 WARRANTY
+    warrantyMonths: { type: Number, default: 0 },
 
-    hsnCode: {
-      type: String,
-      default: "0000",
-      trim: true,
-    },
-
-    barcode: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    gstPercentage: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    modelNumber: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    warrantyMonths: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    totalQuantity: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    unitType: {
-      type: String,
-      default: "Pcs",
-    },
-
+    // 🧪 VARIANTS / BATCH LEVEL INVENTORY (IMPORTANT)
     inventoryItems: [InventoryItemSchema],
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Product", ProductSchema);

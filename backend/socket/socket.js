@@ -1,0 +1,19 @@
+const { Server } = require("socket.io");
+
+function initSocket(server) {
+  const io = new Server(server, {
+    cors: { origin: "*" }
+  });
+
+  io.on("connection", (socket) => {
+    console.log("User connected");
+
+    socket.on("joinBusiness", (businessId) => {
+      socket.join(businessId);
+    });
+  });
+
+  return io;
+}
+
+module.exports = initSocket;

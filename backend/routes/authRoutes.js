@@ -1,35 +1,42 @@
 const express = require("express");
-
 const router = express.Router();
 
-const {
+const authMiddleware = require("../middleware/authMiddleware");
+const allowRoles = require("../middleware/roleMiddleware");
 
+
+
+const {
   registerUser,
   loginUser,
-  forgetPassword
-
+  forgetPassword,
+  createStaff
 } = require("../controllers/authController");
 
+console.log("AUTH ROUTES LOADED");
 
-// ================= REGISTER =================
+
+router.get("/test", (req, res) => {
+  res.json({
+    message: "Auth Route Working"
+  });
+});
+
+// Register
+router.post("/register", registerUser);
+
+// Login
+router.post("/login", loginUser);
+
+// Forgot Password
+router.post("/forget-password", forgetPassword);
+
+// Create Staff (Admin Only)
 router.post(
-  "/register",
-  registerUser
+  "/create-staff",
+  authMiddleware,
+  allowRoles("admin"),
+  createStaff
 );
-
-
-// ================= LOGIN =================
-router.post(
-  "/login",
-  loginUser
-);
-
-
-// ================= FORGOT PASSWORD =================
-router.post(
-  "/forget-password",
-  forgetPassword
-);
-
 
 module.exports = router;

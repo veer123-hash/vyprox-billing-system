@@ -26,12 +26,25 @@ function Dashboard() {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem("token");
+       const token = localStorage.getItem("token");
+
+console.log("TOKEN FROM STORAGE =>", token);
+
+if (!token) {
+  throw new Error("No token found");
+}
+
+const headers = {
+  Authorization: `Bearer ${token}`,
+};
+
+console.log("HEADERS =>", headers);
+
         if (!token) throw new Error("No token found");
         
-        const headers = { Authorization: `Bearer ${token}` };
+        //const headers = { Authorization: `Bearer ${token}` };
 
-        // 🏎️ 2x Speed: Dono APIs parallel call hongi bina ek doosre ka wait kiye
+        // 🏎️ 2x Speed: Parallel API calls without waiting for each other
         const [billsRes, productsRes] = await Promise.all([
           axios.get(`${API}/api/bills`, { headers, signal: controller.signal }),
           axios.get(`${API}/api/products`, { headers, signal: controller.signal })
@@ -42,13 +55,21 @@ function Dashboard() {
           setProducts(productsRes.data?.products || []);
           setError(null);
         }
-      } catch (err) {
-        if (axios.isCancel(err)) return; // System aborted safely
-        console.error("Dashboard Engine Load Error:", err);
-        if (isMounted) {
-          setError("डेटा लोड करने में असमर्थ। कृपया पुनः प्रयास करें।");
-        }
-      } finally {
+      } 
+       catch (err) {
+  if (axios.isCancel(err)) return;
+
+  console.error("Dashboard Engine Load Error:", err);
+
+  console.log("STATUS =>", err.response?.status);
+  //console.log("ERROR DATA =>", err.response?.data);
+  console.log("ERROR DATA =>", JSON.stringify(err.response?.data, null, 2));
+
+  if (isMounted) {
+    setError("Unable to load data. Please try again.");
+  }
+}
+      finally {
         if (isMounted) setLoading(false);
       }
     };
@@ -57,7 +78,7 @@ function Dashboard() {
 
     return () => {
       isMounted = false;
-      controller.abort(); // Unmount hote hi safe closing
+      controller.abort(); // Safe closing on unmount
     };
   }, []);
 
@@ -91,7 +112,7 @@ function Dashboard() {
         } else if (bill.paymentMode === "Bajaj Finance" || bill.paymentMode === "HDB Finance") {
           const downPay = bill.paymentDetails?.downPayment || 0;
           financeTotal += (grandTotal - downPay);
-          cashTotal += downPay; // Downpayment cash box me gaya
+          cashTotal += downPay; // Downpayment went into cash box
         }
       }
     }
@@ -153,7 +174,7 @@ function Dashboard() {
             Welcome Back, Partner! <span className="animate-pulse">👋</span>
           </h1>
           <p className="text-xs sm:text-sm text-indigo-100/90 mt-1.5 font-medium tracking-wide">
-            आपकी दुकान का लाइव लेखा-जोखा, काउंटर कैश, स्प्लिट पेमेंट्स और स्टॉक अलर्ट्स यहाँ सुरक्षित हैं।
+            Your live store analytics, counter cash, split payments, and stock alerts are secure here.
           </p>
         </div>
         <div className="relative z-10 bg-white/15 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-xs font-black uppercase tracking-widest shadow-inner">
@@ -177,7 +198,7 @@ function Dashboard() {
           <div>
             <span className="text-[11px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">Counter Cash In</span>
             <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">₹{analytics.cashTotal.toLocaleString('en-IN')}</p>
-            <p className="text-[10px] text-slate-400 mt-1 font-medium">गल्ले में नकद राशि</p>
+            <p className="text-[10px] text-slate-400 mt-1 font-medium">Cash Available in Counter</p>
           </div>
           <div className="p-4 rounded-2xl bg-emerald-500/10 text-emerald-500 text-2xl group-hover:rotate-6 transition-all"><HiOutlineCurrencyRupee /></div>
         </div>
@@ -187,7 +208,7 @@ function Dashboard() {
           <div>
             <span className="text-[11px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">Digital / UPI Box</span>
             <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">₹{analytics.digitalTotal.toLocaleString('en-IN')}</p>
-            <p className="text-[10px] text-slate-400 mt-1 font-medium">सीधे बैंक खाते का बैलेंस</p>
+            <p className="text-[10px] text-slate-400 mt-1 font-medium">Direct Bank Account Balance</p>
           </div>
           <div className="p-4 rounded-2xl bg-blue-500/10 text-blue-500 text-2xl group-hover:rotate-6 transition-all"><HiOutlineDevicePhoneMobile /></div>
         </div>
@@ -197,7 +218,7 @@ function Dashboard() {
           <div>
             <span className="text-[11px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">Finance Claims</span>
             <p className="text-2xl font-black text-amber-600 dark:text-amber-500 mt-1">₹{analytics.financeTotal.toLocaleString('en-IN')}</p>
-            <p className="text-[10px] text-slate-400 mt-1 font-medium">कंपनियों से आने वाला क्लेम</p>
+            <p className="text-[10px] text-slate-400 mt-1 font-medium">Receivable Claims From Companies</p>
           </div>
           <div className="p-4 rounded-2xl bg-amber-500/10 text-amber-500 text-2xl group-hover:rotate-6 transition-all"><HiOutlineDocumentText /></div>
         </div>
@@ -245,7 +266,7 @@ function Dashboard() {
                   <div className="mx-auto w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                     <HiOutlineCube size={22} />
                   </div>
-                  <p className="text-slate-400 dark:text-slate-500 font-black text-xs">स्टॉक पर्याप्त मात्रा में उपलब्ध है!</p>
+                  <p className="text-slate-400 dark:text-slate-500 font-black text-xs">Stock is available in sufficient quantity!</p>
                 </div>
               )}
             </div>
@@ -291,7 +312,7 @@ function Dashboard() {
                 {analytics.recentBills.length === 0 && (
                   <tr>
                     <td colSpan="4" className="text-center py-12 text-slate-400 dark:text-slate-500 font-black text-xs">
-                      आज अभी तक कोई इनवॉइस नहीं बना है।
+                      No invoices have been generated today yet.
                     </td>
                   </tr>
                 )}

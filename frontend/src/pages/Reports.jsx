@@ -98,7 +98,7 @@ function Reports() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center font-bold dark:text-white">Financial Reports तैयार हो रही हैं...</div>;
+  if (loading) return <div className="p-6 text-center font-bold dark:text-white">Loading financial reports...</div>;
 
   return (
     <div className="p-2 sm:p-4 max-w-7xl mx-auto space-y-6">
@@ -109,7 +109,7 @@ function Reports() {
           <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
             <FiPieChart className="text-indigo-600" /> Business Profit & Sales Reports
           </h1>
-          <p className="text-sm text-gray-500">पूरी दुकान की कमाई, कुल लागत और शुद्ध मुनाफा मार्जिन रिपोर्ट</p>
+          <p className="text-sm text-gray-500">Comprehensive overview of store revenue, costs, and profit margins</p>
         </div>
         <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-md transition-all shrink-0">
           <FiDownloadCloud className="text-sm" /> Print Financial Statement
@@ -123,21 +123,21 @@ function Reports() {
         <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] border dark:border-slate-800 shadow-md">
           <p className="text-xs uppercase tracking-wider font-bold text-gray-400">Total Gross Turnover</p>
           <h3 className="text-2xl sm:text-3xl font-black mt-2 text-slate-900 dark:text-white">₹{summary.totalRevenue.toLocaleString("en-IN")}</h3>
-          <p className="text-[11px] text-emerald-600 font-bold mt-2 flex items-center gap-1"><FiTrendingUp /> कुल इनवॉइस अमाउंट</p>
+          <p className="text-[11px] text-emerald-600 font-bold mt-2 flex items-center gap-1"><FiTrendingUp /> Combined invoice amounts</p>
         </div>
 
         {/* Real Net Profit */}
         <div className="bg-gradient-to-br from-emerald-600 to-teal-700 p-5 rounded-[24px] text-white shadow-lg">
           <p className="text-xs uppercase tracking-wider font-bold text-emerald-100">Estimated Net Profit</p>
           <h3 className="text-2xl sm:text-3xl font-black mt-2">₹{summary.netProfit.toLocaleString("en-IN")}</h3>
-          <p className="text-[11px] text-emerald-200 mt-2 flex items-center gap-1"><FiArrowUpRight /> मार्जिन: {summary.marginPercentage}% शुद्ध मुनाफे के साथ</p>
+          <p className="text-[11px] text-emerald-200 mt-2 flex items-center gap-1"><FiArrowUpRight /> Margin: {summary.marginPercentage}%</p>
         </div>
 
         {/* Real Cost of Stock */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-[24px] border dark:border-slate-800 shadow-md">
           <p className="text-xs uppercase tracking-wider font-bold text-gray-400">Cost of Goods Sold (COGS)</p>
           <h3 className="text-2xl sm:text-3xl font-black mt-2 text-red-500">₹{summary.totalCost.toLocaleString("en-IN")}</h3>
-          <p className="text-[11px] text-gray-400 mt-2">स्टॉक की अपनी खुद की खरीद लागत</p>
+          <p className="text-[11px] text-gray-400 mt-2">Original procurement cost of stock</p>
         </div>
       </div>
 

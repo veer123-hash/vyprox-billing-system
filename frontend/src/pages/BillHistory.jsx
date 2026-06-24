@@ -20,9 +20,9 @@ function BillHistory() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // --- 🛡️ DATA RETENTION POLICY (डेटा सुरक्षित रखने या ऑटो-डिलीट का नियम) ---
+  // --- 🛡️ DATA RETENTION POLICY ---
   const [retentionPolicy, setRetentionPolicy] = useState(() => {
-    return localStorage.getItem("vyprox_retention_policy") || "NEVER"; // डिफ़ॉल्ट: कभी डिलीट न हो
+    return localStorage.getItem("vyprox_retention_policy") || "NEVER"; // Default: Never delete
   });
   const [showPolicyModal, setShowPolicyModal] = useState(false);
 
@@ -39,7 +39,7 @@ function BillHistory() {
 
       let allBills = res.data.bills || [];
 
-      // 🔄 ऑटो-डिलीट फ़िल्टर लॉजिक (अगर 'NEVER' नहीं है तो तय समय से पुराना बिल सामने नहीं आएगा)
+      // 🔄 Auto-Delete Filter Logic
       if (retentionPolicy !== "NEVER") {
         const monthsLimit = parseInt(retentionPolicy);
         const limitDate = new Date();
@@ -70,13 +70,13 @@ function BillHistory() {
     setRetentionPolicy(policy);
     localStorage.setItem("vyprox_retention_policy", policy);
     setShowPolicyModal(false);
-    alert(`डेटा रिटेंशन पालिसी अपडेट हो गई है!`);
+    alert(`Data retention policy has been updated successfully!`);
   };
 
-  // ================= MANUAL DELETE (हाथ से डिलीट करना) =================
+  // ================= MANUAL DELETE =================
   const handleManualDelete = async (billId) => {
     const confirmDelete = window.confirm(
-      "⚠️ क्या आप वाकई इस बिल को हमेशा के लिए डिलीट करना चाहते हैं? यह एक्शन वापस नहीं लिया जा सकता!"
+      "⚠️ Are you sure you want to permanently delete this bill? This action cannot be undone!"
     );
     if (!confirmDelete) return;
 
@@ -85,14 +85,14 @@ function BillHistory() {
       await axios.delete(`${API}/api/bills/${billId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // लिस्ट से तुरंत हटाना
+      // Instant UI list cleanup
       setBills((prev) => prev.filter((b) => b._id !== billId));
     } catch (err) {
-      alert("बिल डिलीट करने में समस्या आई या बैकएंड रूट उपलब्ध नहीं है।");
+      alert("An error occurred while deleting the bill or the backend route is unavailable.");
     }
   };
 
-  // 🧠 🚀 INSTANT DEEP SEARCH ENGINE (कस्टमर, मोबाइल, बिल नंबर, या प्रोडक्ट/IMEI कुछ भी खोजें)
+  // 🧠 🚀 INSTANT DEEP SEARCH ENGINE
   const filteredBills = useMemo(() => {
     if (!searchQuery.trim()) return bills;
 
@@ -102,7 +102,7 @@ function BillHistory() {
       const customerPhone = bill.customerPhone || "";
       const invoiceNo = bill.invoiceNumber?.toLowerCase() || "";
       
-      // प्रोडक्ट्स के नाम, IMEI, बैच नंबर या साइज के अंदर गहराई से खोजना
+      // Deep searching across product names, IMEI, batch numbers, or sizes
       const matchProduct = bill.items?.some((item) => 
         item.name?.toLowerCase().includes(query) ||
         item.soldIMEIorSerial?.toLowerCase().includes(query) ||
@@ -129,7 +129,7 @@ function BillHistory() {
             📂 Invoice Ledger History
           </h1>
           <p className="text-gray-500 dark:text-gray-300 text-sm mt-1">
-            करंट सेफ्टी लॉक: {retentionPolicy === "NEVER" ? "♾️ सुरक्षित (Never Delete जब तक आप न चाहें)" : `⏱️ ऑटो-क्लीनअप (${retentionPolicy} महीना पुराना डेटा)`}
+            Current Safety Lock: {retentionPolicy === "NEVER" ? "♾️ Protected (Never delete unless manually removed)" : `⏱️ Auto-Cleanup (Hiding data older than ${retentionPolicy} month)`}
           </p>
         </div>
 
@@ -141,12 +141,12 @@ function BillHistory() {
         </button>
       </div>
 
-      {/* 🔍 स्मार्ट सर्च बॉक्स (पूरी कुंडली सर्च करने के लिए) */}
+      {/* 🔍 SMART SEARCH BOX */}
       <div className="relative shadow-md rounded-2xl">
         <FiSearch className="absolute left-4 top-4 text-gray-400 text-lg" />
         <input 
           type="text" 
-          placeholder="कस्टमर का नाम, मोबाइल नंबर, बिल नंबर या प्रोडक्ट का नाम/IMEI/Batch नंबर लिखकर खोजें..." 
+          placeholder="Search by customer name, mobile number, invoice number, product name, IMEI, or batch number..." 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-2xl outline-none text-sm font-bold placeholder-gray-400 focus:border-indigo-500 dark:text-white transition-colors"
@@ -161,7 +161,7 @@ function BillHistory() {
       ) : filteredBills.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 shadow-xl text-center">
           <h2 className="text-2xl font-bold dark:text-white">No Bills Found</h2>
-          <p className="text-gray-500 mt-2">सर्च कीवर्ड बदलें या नया इनवॉइस जेनरेट करें।</p>
+          <p className="text-gray-500 mt-2">Try changing your search keywords or generate a new invoice.</p>
         </div>
       ) : (
         /* BILLS GRID CARD LAYOUT */
@@ -234,7 +234,7 @@ function BillHistory() {
                       <tr key={i} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
                         <td className="py-3 dark:text-white">
                           <p className="font-bold text-gray-800 dark:text-gray-200 uppercase">{item.name}</p>
-                          {/* 💎 एडवांस्ड बिजनेस विवरण (IMEI / Batch / Size) */}
+                          {/* Advanced Business Details */}
                           {item.soldIMEIorSerial && <p className="text-[10px] text-blue-600 dark:text-blue-400 font-extrabold mt-0.5">IMEI: {item.soldIMEIorSerial}</p>}
                           {item.batchNumber && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold mt-0.5">Batch: {item.batchNumber}</p>}
                           {item.size && <p className="text-[10px] text-purple-600 dark:text-purple-400 font-extrabold mt-0.5">Size: {item.size}</p>}
@@ -288,7 +288,7 @@ function BillHistory() {
               <FiShield className="text-indigo-600" /> Data Safety Locker
             </h3>
             <p className="text-xs text-gray-400 font-medium mb-5">
-              चुनें कि पुरानी बिल हिस्ट्री कब तक सेव रखनी है। जब तक आप खुद डिलीट नहीं करेंगे, डेटा पूरी तरह सुरक्षित रहेगा।
+              Choose how long to retain old billing history. Unless you manually delete it, your data remains fully secure.
             </p>
 
             <div className="space-y-2.5">
@@ -296,7 +296,7 @@ function BillHistory() {
                 onClick={() => handleSavePolicy("NEVER")} 
                 className={`w-full p-3.5 text-left rounded-xl border font-black text-xs flex justify-between items-center transition-all ${retentionPolicy === "NEVER" ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600" : "border-gray-200 dark:border-slate-800"}`}
               >
-                <span>♾️ लाइफटाइम रखें (Never Auto-Delete)</span>
+                <span>♾️ Keep Lifetime (Never Auto-Delete)</span>
                 {retentionPolicy === "NEVER" && <span className="bg-indigo-600 text-white rounded-full p-0.5 text-[10px]">✓</span>}
               </button>
 
@@ -304,7 +304,7 @@ function BillHistory() {
                 onClick={() => handleSavePolicy("1")} 
                 className={`w-full p-3.5 text-left rounded-xl border font-black text-xs flex justify-between items-center transition-all ${retentionPolicy === "1" ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600" : "border-gray-200 dark:border-slate-800"}`}
               >
-                <span>⏱️ केवल 1 महीना पुराना तक रखें (बाकी छुपाएं)</span>
+                <span>⏱️ Keep Only Up to 1 Month Old (Hide rest)</span>
                 {retentionPolicy === "1" && <span className="bg-indigo-600 text-white rounded-full p-0.5 text-[10px]">✓</span>}
               </button>
 
@@ -312,7 +312,7 @@ function BillHistory() {
                 onClick={() => handleSavePolicy("2")} 
                 className={`w-full p-3.5 text-left rounded-xl border font-black text-xs flex justify-between items-center transition-all ${retentionPolicy === "2" ? "border-indigo-600 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600" : "border-gray-200 dark:border-slate-800"}`}
               >
-                <span>⏱️ केवल 2 महीना पुराना तक रखें (60 Days)</span>
+                <span>⏱️ Keep Only Up to 2 Months Old (60 Days)</span>
                 {retentionPolicy === "2" && <span className="bg-indigo-600 text-white rounded-full p-0.5 text-[10px]">✓</span>}
               </button>
             </div>
