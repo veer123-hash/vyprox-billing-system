@@ -79,23 +79,25 @@ const getProducts = async (req, res) => {
     console.log("========== GET PRODUCTS ==========");
     console.log("REQ.USER =>", req.user);
 
-    const products = await Product.find();
+    const products = await Product.find().sort({
+      createdAt: -1
+    });
 
     console.log("PRODUCTS FOUND =>", products.length);
 
-    return res.status(200).json({
-      success: true,
-      count: products.length,
-      products,
+    res.status(200).json({
+      message: "All products fetched",
+      products
     });
 
   } catch (error) {
 
-    console.error("GET PRODUCTS ERROR =>", error);
+    console.log("========== PRODUCTS ERROR ==========");
+    console.log(error);
 
-    return res.status(500).json({
-      message: error.message,
-      stack: error.stack,
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message
     });
   }
 };

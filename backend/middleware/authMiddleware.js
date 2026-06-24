@@ -6,7 +6,6 @@ const authMiddleware = (req, res, next) => {
   console.log("AUTH HEADER =>", req.headers.authorization);
   console.log("TOKEN =>", token);
   console.log("JWT_SECRET =>", process.env.JWT_SECRET);
-  console.log("JWT ERROR =>", err.message);
 
   if (!token) {
     return res.status(401).json({
