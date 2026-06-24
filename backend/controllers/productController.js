@@ -75,19 +75,27 @@ const addProduct = async (req, res) => {
 // ================= GET PRODUCTS =================
 const getProducts = async (req, res) => {
   try {
-    const products = await Product.find().sort({
-      createdAt: -1
-    });
 
-    res.status(200).json({
-      message: "All products fetched",
-      products
+    console.log("========== GET PRODUCTS ==========");
+    console.log("REQ.USER =>", req.user);
+
+    const products = await Product.find();
+
+    console.log("PRODUCTS FOUND =>", products.length);
+
+    return res.status(200).json({
+      success: true,
+      count: products.length,
+      products,
     });
 
   } catch (error) {
-    res.status(500).json({
-      message: "Server Error",
-      error: error.message
+
+    console.error("GET PRODUCTS ERROR =>", error);
+
+    return res.status(500).json({
+      message: error.message,
+      stack: error.stack,
     });
   }
 };
